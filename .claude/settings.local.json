@@ -33,7 +33,18 @@
       "Bash(railway logs:*)",
       "Bash(railway service:*)",
       "Bash(railway status:*)",
-      "Bash(bash server/setup-bot.sh \"8797835013:AAGbBoaq_ReAiqhs7kLXifllZS4IyOj8iHg\" \"https://romantic-curiosity-production-f21e.up.railway.app\")"
+      "Bash(bash server/setup-bot.sh \"8797835013:AAGbBoaq_ReAiqhs7kLXifllZS4IyOj8iHg\" \"https://romantic-curiosity-production-f21e.up.railway.app\")",
+      "Bash(npm list:*)",
+      "Bash(node server/gen-pfp.js)",
+      "Bash(curl -s -F \"user_id=8797835013\" -F \"photo=@c:/Users/Josh/Videos/one pixel/clawspot/web/bot-pfp.png\" \"https://api.telegram.org/bot8797835013:AAGbBoaq_ReAiqhs7kLXifllZS4IyOj8iHg/setUserProfilePhotos\")",
+      "Bash(curl -s -F \"photo=@c:/Users/Josh/Videos/one pixel/clawspot/web/bot-pfp.png\" \"https://api.telegram.org/bot8797835013:AAGbBoaq_ReAiqhs7kLXifllZS4IyOj8iHg/setBotProfilePhoto\")",
+      "Bash(curl -s \"https://api.telegram.org/bot8797835013:AAGbBoaq_ReAiqhs7kLXifllZS4IyOj8iHg/getMe\")",
+      "Bash(python -c \"import sys,json;print\\(json.dumps\\(json.load\\(sys.stdin\\),indent=2\\)\\)\")",
+      "Bash(curl -s \"https://wbyjmtsriruhvigeloti.supabase.co/rest/v1/\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\")",
+      "Bash(curl -s \"https://wbyjmtsriruhvigeloti.supabase.co/rest/v1/players?select=id&limit=1\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\")",
+      "Bash(railway vars:*)",
+      "Bash(curl -s \"https://wbyjmtsriruhvigeloti.supabase.co/rest/v1/players\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\" -H \"Content-Type: application/json\" -H \"Prefer: return=representation\" -X POST -d '{\"\"username\"\":\"\"test_player\"\",\"\"balance_eth\"\":0}')",
+      "Bash(curl -s \"https://wbyjmtsriruhvigeloti.supabase.co/rest/v1/players?id=eq.0e096bac-23a4-4e03-9642-da17fe343d47\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndieWptdHNyaXJ1aHZpZ2Vsb3RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NzQ3MDMsImV4cCI6MjA4OTU1MDcwM30.swWVKgigkyxpLHU_5sditPIfMGGhyfWCxKxon4eUP5s\" -X DELETE)"
     ]
   }
 }

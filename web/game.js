@@ -362,6 +362,12 @@ const game = {
   shakeX:0, shakeY:0, shakeIntensity:0, shakeDuration:0,
   // QTE
   qte: null, // { active, hit, timer, window, bonus }
+  // Tutorial
+  tutorial: 0, // 0=off, 1=deploy, 2=select, 3=attack, 4=expand, 5=done
+  tutorialPulse: 0,
+  firstGame: true,
+  // Lobby
+  lobby: null, // { tier, players:[], maxPlayers:4, timer:0, gameId }
 };
 
 // === EFFECTS ===
@@ -467,11 +473,12 @@ function initOfflineGame() {
     for(const[r,c]of starts[p]){const cell=cellAt(r,c);cell.owner=p;cell.troops=3;}
     game.shells[p]=50;game.reinforcements[p]=2;game.attackCooldown[p]=0;
   }
-  // Auto-deploy 3 troops to borders for AI so they start ready
   for(let p=1;p<4;p++) aiDeployReinforcements(p);
   for(const c of cells)if(c.owner===-1&&Math.random()<.2)c.troops=Math.floor(Math.random()*2)+1;
   game.phase='deploy';
   game.reinforceTimer=30;game.shellTimer=10;
+  // Start tutorial on first game
+  if(game.firstGame) game.tutorial=1;
 }
 
 function mySlot() { return net.online ? net.playerSlot : 0; }
@@ -695,7 +702,21 @@ function screenToGrid(sx,sy){
 function handleTap(sx,sy){
   const px=sx*devicePixelRatio,py=sy*devicePixelRatio;
   spawnRipple(px,py,'#ffffff');
-  if(game.phase==='title'){initGame();return;}
+  if(game.phase==='title'){
+    // Check if tapped a specific arena tier button
+    const tier = hitTierButton(px, py);
+    if (tier) {
+      joinLobby(tier);
+    } else {
+      initGame(); // free play
+    }
+    return;
+  }
+  if(game.phase==='lobby'){
+    // Tap to cancel lobby
+    game.phase='title';game.lobby=null;
+    return;
+  }
   if(game.phase==='gameover'){game.phase='title';return;}
   if(game.phase==='combat'){
     // QTE tap during combat
@@ -718,7 +739,10 @@ function handleTap(sx,sy){
       spawnRipple(pos.x,pos.y,PLAYER_COLORS[s]);
       spawnFloat(pos.x,pos.y-cellSize*.3,'+1','#00ff88');
       spawnParticles(pos.x,pos.y,PLAYER_COLORS[s],5);
-      if(game.reinforcements[s]<=0)game.phase='play';
+      if(game.reinforcements[s]<=0){
+        game.phase='play';
+        if(game.tutorial===1) advanceTutorial(); // deploy done → select
+      }
     } else if(cell.owner!==s) spawnFloat(pos.x,pos.y-10,'Your spots only!','#ff6666');
     return;
   }
@@ -740,7 +764,10 @@ function handleTap(sx,sy){
   // SELECT / ATTACK
   const s=mySlot();
   if(!game.selectedCell){
-    if(cell.owner===s&&cell.troops>=1){game.selectedCell=cell;spawnRipple(pos.x,pos.y,PLAYER_COLORS[s]);audio.play('shell_earn');}
+    if(cell.owner===s&&cell.troops>=1){
+      game.selectedCell=cell;spawnRipple(pos.x,pos.y,PLAYER_COLORS[s]);audio.play('shell_earn');
+      if(game.tutorial===2) advanceTutorial(); // selected → attack
+    }
     else if(cell.owner>=0&&cell.owner!==s)spawnFloat(pos.x,pos.y-10,'Enemy','#ff8888');
     else spawnFloat(pos.x,pos.y-10,'Empty','#666');
     return;
@@ -764,6 +791,7 @@ function handleTap(sx,sy){
       spawnParticles(pos.x,pos.y,PLAYER_COLORS[s],10);
       spawnFloat(pos.x,pos.y-20,'Claimed!','#00ff88');
       game.attackCooldown[s]=0.5;game.selectedCell=null;
+      if(game.tutorial===3||game.tutorial===4) advanceTutorial();
       return;
     }
     // Real combat against occupied cell
@@ -775,6 +803,7 @@ function handleTap(sx,sy){
     } else {
       startPlayerCombat(game.selectedCell,cell);game.attackCooldown[s]=2;game.selectedCell=null;
     }
+    if(game.tutorial===3) advanceTutorial(); // attacked → expand
     return;
   }
   if(cell.owner===s){game.selectedCell=cell;spawnRipple(pos.x,pos.y,PLAYER_COLORS[s]);audio.play('shell_earn');return;}
@@ -1581,6 +1610,7 @@ function drawHUD() {
 }
 
 function drawHintBar() {
+  if (game.tutorial > 0 && game.tutorial < 5) return; // tutorial handles hints
   const dpr = devicePixelRatio;
   let hint = '';
   if (game.phase === 'deploy' && game.reinforcements[mySlot()] > 0)
@@ -1608,6 +1638,319 @@ function drawHintBar() {
   ctx.font = `bold ${Math.max(10 * dpr, 11)}px monospace`;
   ctx.textAlign = 'center';
   ctx.fillText(hint, W / 2, barY + barH * 0.65);
+}
+
+// === TUTORIAL OVERLAY ===
+const TUTORIAL_STEPS = [
+  null, // 0 = off
+  { // 1 = deploy
+    title: 'DEPLOY TROOPS',
+    text: 'Tap your green spots to place crab troops.',
+    sub: 'Each troop makes your territory stronger.',
+    highlight: 'own', // highlight player cells
+  },
+  { // 2 = select
+    title: 'SELECT A SPOT',
+    text: 'Tap one of your spots to select it.',
+    sub: 'Selected spots show attack targets.',
+    highlight: 'own',
+  },
+  { // 3 = attack
+    title: 'ATTACK!',
+    text: 'Tap a red-highlighted enemy to attack.',
+    sub: 'RISK dice decide the battle. Tap during QTE for +1!',
+    highlight: 'enemy',
+  },
+  { // 4 = expand
+    title: 'KEEP EXPANDING',
+    text: 'Claim empty spots, conquer regions for bonuses.',
+    sub: 'Capture 60 spots to win! You got this.',
+    highlight: null,
+  },
+];
+
+function drawTutorial() {
+  const step = game.tutorial;
+  if (step <= 0 || step >= 5) return;
+  const info = TUTORIAL_STEPS[step];
+  if (!info) return;
+
+  const dpr = devicePixelRatio;
+  const me = mySlot();
+  game.tutorialPulse += game.dt * 3;
+
+  // Dim non-highlighted areas
+  if (info.highlight) {
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+
+    // Bright pulsing highlight on target cells
+    const pulse = 0.3 + Math.sin(game.tutorialPulse) * 0.2;
+    for (const cell of cells) {
+      let show = false;
+      if (info.highlight === 'own' && cell.owner === me) show = true;
+      if (info.highlight === 'enemy' && game.selectedCell) {
+        if (cell.owner !== me && isAdjacent(game.selectedCell, cell)) show = true;
+      }
+      if (!show) continue;
+
+      const x = gridOffsetX + cell.col * cellSize;
+      const y = gridOffsetY + cell.row * cellSize;
+
+      // Glow ring
+      ctx.strokeStyle = info.highlight === 'enemy' ? '#ff4444' : '#00ff88';
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = pulse;
+      ctx.strokeRect(x - 2, y - 2, cellSize + 4, cellSize + 4);
+      ctx.globalAlpha = 1;
+
+      // Bouncing arrow above
+      const ax = x + cellSize / 2;
+      const ay = y - 8 - Math.sin(game.tutorialPulse * 1.5) * 6;
+      ctx.fillStyle = info.highlight === 'enemy' ? '#ff4444' : '#00ff88';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay + 8);
+      ctx.lineTo(ax - 5, ay);
+      ctx.lineTo(ax + 5, ay);
+      ctx.fill();
+    }
+  }
+
+  // Tutorial card at bottom
+  const cardW = Math.min(W * 0.88, 400 * dpr);
+  const cardH = 90 * dpr;
+  const cardX = (W - cardW) / 2;
+  const cardY = H - cardH - 70 * dpr;
+
+  // Card bg
+  const grad = ctx.createLinearGradient(cardX, cardY, cardX, cardY + cardH);
+  grad.addColorStop(0, 'rgba(10,20,40,0.95)');
+  grad.addColorStop(1, 'rgba(6,10,24,0.95)');
+  ctx.fillStyle = grad;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 12); ctx.fill();
+  ctx.strokeStyle = '#00ff8855';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, cardX, cardY, cardW, cardH, 12); ctx.stroke();
+
+  // Step indicator (dots)
+  const dotY = cardY + 14 * dpr;
+  for (let i = 1; i <= 4; i++) {
+    const dx = W / 2 + (i - 2.5) * 16 * dpr;
+    ctx.fillStyle = i === step ? '#00ff88' : i < step ? '#006633' : '#333';
+    ctx.beginPath();
+    ctx.arc(dx, dotY, 4 * dpr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Title
+  ctx.fillStyle = '#00ff88';
+  ctx.font = `bold ${Math.max(14 * dpr, 15)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(info.title, W / 2, cardY + 34 * dpr);
+
+  // Main text
+  ctx.fillStyle = '#ddd';
+  ctx.font = `${Math.max(12 * dpr, 13)}px monospace`;
+  ctx.fillText(info.text, W / 2, cardY + 54 * dpr);
+
+  // Sub text
+  ctx.fillStyle = '#888';
+  ctx.font = `${Math.max(10 * dpr, 11)}px monospace`;
+  ctx.fillText(info.sub, W / 2, cardY + 72 * dpr);
+
+  // Skip button
+  ctx.fillStyle = '#444';
+  ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
+  ctx.fillText('tap anywhere outside to skip tutorial', W / 2, cardY + cardH + 14 * dpr);
+}
+
+function advanceTutorial() {
+  if (game.tutorial <= 0) return;
+  game.tutorial++;
+  if (game.tutorial >= 5) {
+    game.tutorial = 0;
+    game.firstGame = false;
+  }
+}
+
+// === PVP LOBBY ===
+const LOBBY_TIERS = [
+  { key: 'bronze', name: 'Bronze', entry: '0.005', color: '#cc8844' },
+  { key: 'silver', name: 'Silver', entry: '0.02',  color: '#aaaacc' },
+  { key: 'gold',   name: 'Gold',   entry: '0.05',  color: '#ffcc00' },
+  { key: 'diamond',name: 'Diamond',entry: '0.2',   color: '#44ddff' },
+];
+
+// Title screen tier button positions (calculated in drawTitle)
+let tierButtonRects = [];
+
+function hitTierButton(px, py) {
+  for (const r of tierButtonRects) {
+    if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return r.tier;
+  }
+  return null;
+}
+
+async function joinLobby(tier) {
+  game.lobby = { tier, players: [{ name: net.username || 'You', ready: true }], maxPlayers: 4, timer: 0, gameId: null, waitTime: 0 };
+  game.phase = 'lobby';
+
+  // Try to join on server
+  if (!net.token) {
+    const authed = await net.auth();
+    if (!authed) { game.phase = 'title'; game.lobby = null; return; }
+  }
+
+  const joined = await net.joinGame(tier);
+  if (joined) {
+    game.lobby.gameId = net.gameId;
+    net.connectWS();
+    // Poll for more players
+    pollLobby();
+  } else {
+    spawnFloat(W / 2, H / 2, 'Failed to join', '#ff4444');
+    game.phase = 'title';
+    game.lobby = null;
+  }
+}
+
+function pollLobby() {
+  if (!game.lobby || game.phase !== 'lobby') return;
+
+  // Check if game started (WS will send state)
+  if (net.online) {
+    // Server already filled with AI after join — start the game
+    game.phase = 'deploy';
+    game.lobby = null;
+    return;
+  }
+
+  // Retry connection
+  setTimeout(() => {
+    if (game.phase === 'lobby' && !net.online) {
+      net.connectWS();
+      setTimeout(pollLobby, 1000);
+    } else if (game.phase === 'lobby' && net.online) {
+      game.phase = 'deploy';
+      game.lobby = null;
+    }
+  }, 500);
+}
+
+function drawLobby() {
+  drawOceanBG();
+  const dpr = devicePixelRatio;
+  const lb = game.lobby;
+  if (!lb) return;
+
+  const tierInfo = LOBBY_TIERS.find(t => t.key === lb.tier) || LOBBY_TIERS[0];
+  lb.waitTime += game.dt;
+
+  // Header
+  ctx.fillStyle = 'rgba(6,6,20,0.92)';
+  ctx.fillRect(0, 0, W, 60 * dpr);
+
+  ctx.fillStyle = tierInfo.color;
+  ctx.font = `bold ${Math.max(20 * dpr, 22)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(tierInfo.name + ' Arena', W / 2, 28 * dpr);
+  ctx.fillStyle = '#888';
+  ctx.font = `${Math.max(12 * dpr, 13)}px monospace`;
+  ctx.fillText('Entry: ' + tierInfo.entry + ' ETH', W / 2, 48 * dpr);
+
+  // Waiting animation
+  const dots = '.'.repeat(Math.floor(lb.waitTime * 2) % 4);
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(18 * dpr, 20)}px monospace`;
+  ctx.fillText('Waiting for players' + dots, W / 2, H * 0.3);
+
+  // Player slots
+  const slotW = Math.min(160 * dpr, W * 0.4);
+  const slotH = 70 * dpr;
+  const gap = 16 * dpr;
+  const totalW = slotW * 2 + gap;
+  const startX = (W - totalW) / 2;
+  const startY = H * 0.38;
+
+  for (let i = 0; i < 4; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const sx = startX + col * (slotW + gap);
+    const sy = startY + row * (slotH + gap);
+
+    const filled = i === 0; // slot 0 is always the player
+    const isPlayer = i === 0;
+
+    // Slot bg
+    ctx.fillStyle = filled ? '#0c1a1c' : '#0c0c18';
+    roundRect(ctx, sx, sy, slotW, slotH, 10); ctx.fill();
+    ctx.strokeStyle = filled ? PLAYER_COLORS[i] : '#222';
+    ctx.lineWidth = filled ? 2 : 1;
+    roundRect(ctx, sx, sy, slotW, slotH, 10); ctx.stroke();
+
+    if (filled) {
+      // Crab
+      drawCrab(sx + slotW * 0.25, sy + slotH * 0.5, slotH * 0.22, PLAYER_COLORS[i], 0, game.time + i);
+      // Name
+      ctx.fillStyle = PLAYER_COLORS[i];
+      ctx.font = `bold ${Math.max(11 * dpr, 12)}px monospace`;
+      ctx.textAlign = 'left';
+      ctx.fillText(isPlayer ? (net.username || 'You') : 'Player ' + (i + 1), sx + slotW * 0.45, sy + slotH * 0.45);
+      ctx.fillStyle = '#00ff88';
+      ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
+      ctx.fillText('READY', sx + slotW * 0.45, sy + slotH * 0.7);
+    } else {
+      // Empty slot — pulsing "?"
+      const pulse = 0.3 + Math.sin(game.time * 2 + i) * 0.2;
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#444';
+      ctx.font = `bold ${Math.max(24 * dpr, 26)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText('?', sx + slotW / 2, sy + slotH * 0.6);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#333';
+      ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
+      ctx.fillText('waiting...', sx + slotW / 2, sy + slotH * 0.85);
+    }
+  }
+
+  // Timer
+  ctx.fillStyle = '#555';
+  ctx.font = `${Math.max(11 * dpr, 12)}px monospace`;
+  ctx.textAlign = 'center';
+  const waitSec = Math.floor(lb.waitTime);
+  ctx.fillText('Waited ' + waitSec + 's \u2022 AI fills in ' + Math.max(0, 30 - waitSec) + 's', W / 2, H * 0.72);
+
+  // Auto-fill with AI after 30 seconds
+  if (lb.waitTime >= 30 && game.phase === 'lobby') {
+    game.phase = 'deploy';
+    game.lobby = null;
+    if (!net.online) initOfflineGame();
+  }
+
+  // Cancel button
+  const cbW = 140 * dpr, cbH = 40 * dpr;
+  const cbX = (W - cbW) / 2, cbY = H * 0.8;
+  ctx.fillStyle = '#1a1212';
+  roundRect(ctx, cbX, cbY, cbW, cbH, 8); ctx.fill();
+  ctx.strokeStyle = '#ff4444';
+  ctx.lineWidth = 1;
+  roundRect(ctx, cbX, cbY, cbW, cbH, 8); ctx.stroke();
+  ctx.fillStyle = '#ff4444';
+  ctx.font = `bold ${Math.max(12 * dpr, 13)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('CANCEL', W / 2, cbY + cbH * 0.62);
+
+  // Prize pool
+  const pot = (parseFloat(tierInfo.entry) * 4 * 0.9).toFixed(3);
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = `bold ${Math.max(14 * dpr, 15)}px monospace`;
+  ctx.fillText('Prize Pool: ' + pot + ' ETH', W / 2, H * 0.9);
+  ctx.fillStyle = '#666';
+  ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
+  ctx.fillText('Winner takes 90% \u2022 10% platform fee', W / 2, H * 0.94);
 }
 
 function drawEffects() {
@@ -1767,7 +2110,6 @@ function drawTitle() {
 
   const dpr = devicePixelRatio;
   const ts = Math.max(34 * dpr, 38);
-  const ss = Math.max(16 * dpr, 18);
 
   // Grid preview faintly
   ctx.globalAlpha = 0.08;
@@ -1813,17 +2155,59 @@ function drawTitle() {
     ctx.fillText(t, W * 0.08 + (i + 0.5) * (W * 0.84 / 3), stY + 20 * dpr);
   });
 
-  // Play button
-  const pulse = 0.5 + Math.sin(game.time * 3) * 0.4;
-  ctx.globalAlpha = Math.max(0, pulse);
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${ss * 1.2}px monospace`;
-  ctx.fillText('\u2694 TAP TO PLAY', W / 2, H * 0.82);
-  ctx.globalAlpha = 1;
+  // Free Play button (big, centered)
+  const playBtnW = Math.min(240 * dpr, W * 0.6);
+  const playBtnH = 44 * dpr;
+  const playBtnX = (W - playBtnW) / 2;
+  const playBtnY = H * 0.74;
+  const pulse = 0.7 + Math.sin(game.time * 3) * 0.3;
 
-  ctx.fillStyle = '#444';
-  ctx.font = `${Math.max(10 * dpr, 11)}px monospace`;
-  ctx.fillText('Free Play \u2022 No wallet needed', W / 2, H * 0.88);
+  ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 10 * pulse;
+  const playGr = ctx.createLinearGradient(playBtnX, playBtnY, playBtnX, playBtnY + playBtnH);
+  playGr.addColorStop(0, '#0d3d1d'); playGr.addColorStop(1, '#0a2a12');
+  ctx.fillStyle = playGr;
+  roundRect(ctx, playBtnX, playBtnY, playBtnW, playBtnH, 10); ctx.fill();
+  ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 2;
+  roundRect(ctx, playBtnX, playBtnY, playBtnW, playBtnH, 10); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#00ff88';
+  ctx.font = `bold ${Math.max(16 * dpr, 17)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('\u2694 FREE PLAY', W / 2, playBtnY + playBtnH * 0.62);
+
+  // Staked arena tier buttons (small row)
+  tierButtonRects = [];
+  const tbW = Math.min(W * 0.88, 420 * dpr);
+  const tierY = H * 0.84;
+  const tierBtnW = (tbW - 12 * dpr * 3) / 4;
+  const tierBtnH = 32 * dpr;
+  const tierStartX = (W - tbW) / 2;
+
+  ctx.fillStyle = '#555';
+  ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
+  ctx.fillText('STAKED ARENAS', W / 2, tierY - 6);
+
+  LOBBY_TIERS.forEach((tier, i) => {
+    const tx = tierStartX + i * (tierBtnW + 12 * dpr);
+    ctx.fillStyle = '#0c0c1a';
+    roundRect(ctx, tx, tierY, tierBtnW, tierBtnH, 6); ctx.fill();
+    ctx.strokeStyle = tier.color + '88';
+    ctx.lineWidth = 1;
+    roundRect(ctx, tx, tierY, tierBtnW, tierBtnH, 6); ctx.stroke();
+    ctx.fillStyle = tier.color;
+    ctx.font = `bold ${Math.max(9 * dpr, 10)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(tier.name, tx + tierBtnW / 2, tierY + tierBtnH * 0.4);
+    ctx.fillStyle = '#888';
+    ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
+    ctx.fillText(tier.entry + ' ETH', tx + tierBtnW / 2, tierY + tierBtnH * 0.78);
+    tierButtonRects.push({ x: tx, y: tierY, w: tierBtnW, h: tierBtnH, tier: tier.key });
+  });
+
+  ctx.fillStyle = '#333';
+  ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('Join a staked arena to win ETH', W / 2, tierY + tierBtnH + 14 * dpr);
 
   // Ticker on top
   drawTicker();
@@ -1912,7 +2296,7 @@ function drawGameOver() {
 
 // === UPDATE ===
 function update(dt) {
-  if (game.phase === 'title' || game.phase === 'gameover') { updateEffects(dt); return; }
+  if (game.phase === 'title' || game.phase === 'gameover' || game.phase === 'lobby') { updateEffects(dt); return; }
   const me = mySlot();
   for (let p = 0; p < 4; p++) if (game.attackCooldown[p] > 0) game.attackCooldown[p] -= dt;
 
@@ -1961,6 +2345,9 @@ function gameLoop(ts) {
   if (game.phase === 'title') {
     drawTitle();
     drawEffects();
+  } else if (game.phase === 'lobby') {
+    drawLobby();
+    drawEffects();
   } else {
     // Apply screen shake
     ctx.save();
@@ -1982,6 +2369,7 @@ function gameLoop(ts) {
     drawHUD();
     drawTicker();
     drawHintBar();
+    drawTutorial();
     if (game.phase === 'gameover') drawGameOver();
   }
   requestAnimationFrame(gameLoop);
