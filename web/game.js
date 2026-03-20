@@ -1407,7 +1407,7 @@ function drawCombat() {
 
   // Panel
   const pw = Math.min(W * 0.92, 480 * dpr);
-  const ph = Math.min(H * 0.32, 220 * dpr);
+  const ph = Math.min(H * 0.42, 300 * dpr);
   const px = (W - pw) / 2, py = (H - ph) / 2;
 
   // Panel bg
@@ -1422,6 +1422,7 @@ function drawCombat() {
 
   const fs = Math.max(13 * dpr, 15);
   const bf = Math.max(17 * dpr, 19);
+  const sf = Math.max(10 * dpr, 11);
   const dc = cs.defender.owner >= 0 ? PLAYER_COLORS[cs.defender.owner] : '#888';
 
   // Attacker
@@ -1450,14 +1451,38 @@ function drawCombat() {
   ctx.fillStyle = '#aaa';
   ctx.fillText(cs.defender.troops + ' troops', px + pw * 0.75, py + ph * 0.55);
 
+  // Dice label
+  if (progress > 0.2) {
+    ctx.fillStyle = '#555';
+    ctx.font = `${sf * 0.9}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('DICE ROLLS', px + pw * 0.5, py + ph * 0.63);
+  }
+
   // Dice
   if (progress > 0.3) {
     drawDice(px + pw * 0.25, py + ph * 0.72, cs.result.atkRolls, PLAYER_COLORS[cs.attacker.owner], pw * 0.38);
     drawDice(px + pw * 0.75, py + ph * 0.72, cs.result.defRolls, dc, pw * 0.38);
   }
 
+  // Dice comparison — show which dice won
+  if (progress > 0.5) {
+    const r = cs.result;
+    const sf2 = Math.max(9 * dpr, 10);
+    const compY = py + ph * 0.84;
+    const pairs = Math.min(r.atkRolls.length, r.defRolls.length);
+    for (let i = 0; i < pairs; i++) {
+      const atkWon = r.atkRolls[i] > r.defRolls[i];
+      const cy2 = compY + i * 14 * dpr;
+      ctx.font = `${sf2}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = atkWon ? '#00ff88' : '#ff6666';
+      ctx.fillText(r.atkRolls[i] + (atkWon ? ' > ' : ' \u2264 ') + r.defRolls[i] + (atkWon ? ' \u2192 def -1' : ' \u2192 atk -1'), px + pw * 0.5, cy2);
+    }
+  }
+
   // Result
-  if (progress > 0.6) {
+  if (progress > 0.7) {
     const r = cs.result;
     let txt, col;
     if (r.defLoss > r.atkLoss) { txt = 'ATTACKER WINS!'; col = '#00ff88'; }
@@ -1465,7 +1490,8 @@ function drawCombat() {
     else { txt = 'DRAW!'; col = '#ffcc00'; }
     ctx.fillStyle = col;
     ctx.font = `bold ${fs}px monospace`;
-    ctx.fillText(txt, px + pw * 0.5, py + ph * 0.92);
+    ctx.textAlign = 'center';
+    ctx.fillText(txt, px + pw * 0.5, py + ph * 0.98);
   }
 }
 
