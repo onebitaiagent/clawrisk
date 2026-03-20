@@ -316,29 +316,91 @@ tickerEl.innerHTML=tickerHTML+tickerHTML; // double for seamless loop
 
 // Leaderboard
 const lb=document.getElementById('leaderboard');
-const topPlayers=names.sort(()=>Math.random()-.5).slice(0,8).map((n,i)=>({
-  name:n, wins:Math.floor(5+Math.random()*50),
-  eth:(0.5+Math.random()*5).toFixed(3), streak:Math.floor(1+Math.random()*8),
-})).sort((a,b)=>b.eth-a.eth);
 
-let lbHTML='<thead><tr><th>#</th><th>Player</th><th>Wins</th><th>ETH Won</th></tr></thead><tbody>';
-topPlayers.forEach((p,i)=>{
-  const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
-  lbHTML+=`<tr class="${i===0?'lb-row-1':''}"><td class="lb-rank ${rc}">${i+1}</td><td class="lb-name">${p.name} <span class="lb-streak">🔥${p.streak}</span></td><td class="lb-wins">${p.wins}W</td><td>${p.eth}</td></tr>`;
-});
-lb.innerHTML=lbHTML+'</tbody>';
+function renderLeaderboardMock(){
+  const topPlayers=names.sort(()=>Math.random()-.5).slice(0,8).map((n,i)=>({
+    name:n, wins:Math.floor(5+Math.random()*50),
+    eth:(0.5+Math.random()*5).toFixed(3), streak:Math.floor(1+Math.random()*8),
+  })).sort((a,b)=>b.eth-a.eth);
+  let lbHTML='<thead><tr><th>#</th><th>Player</th><th>Wins</th><th>ETH Won</th></tr></thead><tbody>';
+  topPlayers.forEach((p,i)=>{
+    const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    lbHTML+=`<tr class="${i===0?'lb-row-1':''}"><td class="lb-rank ${rc}">${i+1}</td><td class="lb-name">${p.name} <span class="lb-streak">🔥${p.streak}</span></td><td class="lb-wins">${p.wins}W</td><td>${p.eth}</td></tr>`;
+  });
+  lb.innerHTML=lbHTML+'</tbody>';
+}
+
+function renderLeaderboardAPI(players){
+  let lbHTML='<thead><tr><th>#</th><th>Player</th><th>Wins</th><th>ETH Won</th></tr></thead><tbody>';
+  players.forEach((p,i)=>{
+    const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const eth=(p.total_earned||0).toFixed(3);
+    lbHTML+=`<tr class="${i===0?'lb-row-1':''}"><td class="lb-rank ${rc}">${i+1}</td><td class="lb-name">${p.username||'Anon'}</td><td class="lb-wins">${p.wins||0}W</td><td>${eth}</td></tr>`;
+  });
+  lb.innerHTML=lbHTML+'</tbody>';
+}
 
 // Feed
 const feedEl=document.getElementById('feed');
-for(let i=0;i<15;i++){
-  const n=names[Math.floor(Math.random()*names.length)];
-  const a=actions[Math.floor(Math.random()*actions.length)];
-  const eth=(a==='dominated'?(0.1+Math.random()*.9):(0.005+Math.random()*.3)).toFixed(3);
-  const mins=Math.floor(Math.random()*120);
-  const icon=a==='won'?'⚔':a==='dominated'?'♛':a==='eliminated'?'☠':'⚑';
-  const timeStr=mins<1?'just now':mins+'m ago';
-  feedEl.innerHTML+=`<div class="feed-item"><div class="feed-left"><div class="feed-name">${n}</div><div class="feed-action ${a}">${icon} ${a}</div></div><div class="feed-right"><div class="feed-eth">+${eth} ETH</div><div class="feed-time">${timeStr}</div></div></div>`;
+
+function renderFeedMock(){
+  feedEl.innerHTML='';
+  for(let i=0;i<15;i++){
+    const n=names[Math.floor(Math.random()*names.length)];
+    const a=actions[Math.floor(Math.random()*actions.length)];
+    const eth=(a==='dominated'?(0.1+Math.random()*.9):(0.005+Math.random()*.3)).toFixed(3);
+    const mins=Math.floor(Math.random()*120);
+    const icon=a==='won'?'⚔':a==='dominated'?'♛':a==='eliminated'?'☠':'⚑';
+    const timeStr=mins<1?'just now':mins+'m ago';
+    feedEl.innerHTML+=`<div class="feed-item"><div class="feed-left"><div class="feed-name">${n}</div><div class="feed-action ${a}">${icon} ${a}</div></div><div class="feed-right"><div class="feed-eth">+${eth} ETH</div><div class="feed-time">${timeStr}</div></div></div>`;
+  }
 }
+
+function renderFeedAPI(games){
+  feedEl.innerHTML='';
+  games.forEach(g=>{
+    const pot=(g.pot||0).toFixed(3);
+    const tier=g.arena_tier||'free';
+    const ended=g.ended_at?new Date(g.ended_at):new Date();
+    const mins=Math.max(0,Math.floor((Date.now()-ended.getTime())/60000));
+    const timeStr=mins<1?'just now':mins+'m ago';
+    const icon=tier==='diamond'?'♛':tier==='gold'?'♛':'⚔';
+    const actionClass=tier==='diamond'||tier==='gold'?'dominated':'won';
+    const winnerId=g.winner_id||'Winner';
+    feedEl.innerHTML+=`<div class="feed-item"><div class="feed-left"><div class="feed-name">${winnerId.slice(0,12)}</div><div class="feed-action ${actionClass}">${icon} won ${tier}</div></div><div class="feed-right"><div class="feed-eth">+${pot} ETH</div><div class="feed-time">${timeStr}</div></div></div>`;
+  });
+}
+
+// Fetch live data, fall back to mock
+async function loadLeaderboard(){
+  try{
+    const res=await fetch('/api/leaderboard/top');
+    if(!res.ok) throw new Error('API error');
+    const data=await res.json();
+    if(data.players && data.players.length>0){
+      renderLeaderboardAPI(data.players);
+      return;
+    }
+  }catch(e){}
+  renderLeaderboardMock();
+}
+
+async function loadFeed(){
+  try{
+    const res=await fetch('/api/leaderboard/recent');
+    if(!res.ok) throw new Error('API error');
+    const data=await res.json();
+    if(data.games && data.games.length>0){
+      renderFeedAPI(data.games);
+      return;
+    }
+  }catch(e){}
+  renderFeedMock();
+}
+
+// Load on page ready
+loadLeaderboard();
+loadFeed();
 </script>
 </body>
 </html>

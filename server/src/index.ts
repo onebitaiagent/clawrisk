@@ -9,6 +9,7 @@ import { walletRouter } from './routes/wallet';
 import { leaderboardRouter } from './routes/leaderboard';
 import { botRouter } from './routes/bot';
 import { initSupabase } from './services/db';
+import { startDepositWatcher } from './services/deposit-watcher';
 
 const app = express();
 const server = http.createServer(app);
@@ -42,6 +43,7 @@ initWebSocket(server);
 
 // Init DB and start
 initSupabase();
+startDepositWatcher();
 
 server.listen(PORT, () => {
   console.log(`ClawSpot Arena server running on :${PORT}`);

@@ -368,6 +368,8 @@ const game = {
   firstGame: true,
   // Lobby
   lobby: null, // { tier, players:[], maxPlayers:4, timer:0, gameId }
+  // Audio
+  muted: false,
 };
 
 // === EFFECTS ===
@@ -383,6 +385,20 @@ function spawnParticles(x,y,color,count){
 function screenShake(intensity, duration) {
   game.shakeIntensity = intensity * devicePixelRatio;
   game.shakeDuration = duration || 0.3;
+  haptic(intensity > 5 ? 'heavy' : 'light');
+}
+
+function haptic(type) {
+  try {
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      const tg = window.Telegram.WebApp.HapticFeedback;
+      if (type === 'heavy') tg.impactOccurred('heavy');
+      else if (type === 'medium') tg.impactOccurred('medium');
+      else tg.impactOccurred('light');
+    } else if (navigator.vibrate) {
+      navigator.vibrate(type === 'heavy' ? 50 : type === 'medium' ? 25 : 10);
+    }
+  } catch(e) {}
 }
 
 function spawnMarch(fromCell, toCell, color, count) {
@@ -723,6 +739,15 @@ function handleTap(sx,sy){
     if(game.qte&&game.qte.active&&!game.qte.hit) hitQTE();
     return;
   }
+  // Mute button
+  if(game._muteRect){
+    const mr=game._muteRect;
+    if(px>=mr.x&&px<=mr.x+mr.w&&py>=mr.y&&py<=mr.y+mr.h){
+      game.muted=!game.muted;
+      haptic('light');
+      return;
+    }
+  }
   if(handleHUDTap(sx,sy))return;
   const cell=screenToGrid(sx,sy);
   if(!cell)return;
@@ -735,7 +760,7 @@ function handleTap(sx,sy){
         net.send({type:'deploy',cellIdx:cell.row*10+cell.col});
       }
       cell.troops++;game.reinforcements[s]--;
-      audio.play('troop_deploy');
+      audio.play('troop_deploy');haptic('light');
       spawnRipple(pos.x,pos.y,PLAYER_COLORS[s]);
       spawnFloat(pos.x,pos.y-cellSize*.3,'+1','#00ff88');
       spawnParticles(pos.x,pos.y,PLAYER_COLORS[s],5);
@@ -789,7 +814,7 @@ function handleTap(sx,sy){
       }
       audio.play('claim_territory');
       spawnParticles(pos.x,pos.y,PLAYER_COLORS[s],10);
-      spawnFloat(pos.x,pos.y-20,'Claimed!','#00ff88');
+      spawnFloat(pos.x,pos.y-20,'Claimed!','#00ff88');haptic('medium');
       game.attackCooldown[s]=0.5;game.selectedCell=null;
       if(game.tutorial===3||game.tutorial===4) advanceTutorial();
       return;
@@ -904,7 +929,7 @@ const audio={ctx:null,enabled:false,
     const lg=c.createGain();lg.gain.value=.02;lfo.connect(lg);lg.connect(dg.gain);lfo.start();
   },
   play(s){
-    if(!this.ctx||!this.enabled)return;
+    if(!this.ctx||!this.enabled||game.muted)return;
     const c=this.ctx,now=c.currentTime;
     const q=(type,f1,f2,dur,vol)=>{
       const o=c.createOscillator(),g=c.createGain();o.type=type;
@@ -1607,6 +1632,19 @@ function drawHUD() {
   ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
   ctx.textAlign = 'center';
   ctx.fillText(countTerritories(me) + '/60 to dominate', W / 2, barY - 4);
+
+  // Mute button (top right, below ticker)
+  const muteSize = 24 * dpr;
+  const muteX = W - muteSize - 8 * dpr;
+  const muteY = tickerH + tbh + 6;
+  ctx.fillStyle = 'rgba(20,20,40,0.7)';
+  ctx.beginPath(); ctx.arc(muteX + muteSize/2, muteY + muteSize/2, muteSize/2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = game.muted ? '#ff4444' : '#666';
+  ctx.font = `${Math.max(12*dpr,13)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(game.muted ? '\u2715' : '\u266B', muteX + muteSize/2, muteY + muteSize*0.62);
+  // Store rect for tap detection
+  game._muteRect = { x: muteX, y: muteY, w: muteSize, h: muteSize };
 }
 
 function drawHintBar() {

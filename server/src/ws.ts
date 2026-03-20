@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { getPlayerFromTokenString } from './routes/auth';
 import { activeGames } from './routes/game';
 import { tickGame, resolveCombat, GameState } from './services/game-engine';
+import { findPlayerById, updatePlayer, createGame as dbCreateGame, updateGame as dbUpdateGame } from './services/db';
 
 interface ClientSocket extends WebSocket {
   playerId?: string;
@@ -93,6 +94,12 @@ export function initWebSocket(server: HttpServer) {
       // Broadcast state to connected clients
       if (reinforced || shellIncome) {
         broadcastGameState(gameId, game);
+      }
+
+      // Handle game finish — credit winner, record results
+      if ((game.phase as string) === 'finished' && !(game as any)._settled) {
+        (game as any)._settled = true;
+        settleGame(game).catch(err => console.error('Failed to settle game:', err));
       }
 
       // Clean up finished games after 60s
@@ -286,4 +293,50 @@ function broadcastToGame(gameId: string, msg: any) {
 
 function broadcastGameState(gameId: string, game: GameState) {
   broadcastToGame(gameId, { type: 'state', game: serializeGame(game) });
+}
+
+async function settleGame(game: GameState) {
+  if (game.winner < 0 || game.winner >= game.players.length) return;
+
+  const winnerPlayer = game.players[game.winner];
+  const isFreeTier = game.tier === 'free';
+
+  // Record game in database
+  const gameRecord = await dbCreateGame({
+    arena_tier: game.tier,
+    entry_fee: isFreeTier ? 0 : game.pot / Math.max(game.players.filter(p => !p.isAI).length, 1),
+    players: game.players.filter(p => !p.isAI).map(p => p.id),
+    winner_id: winnerPlayer.isAI ? undefined : winnerPlayer.id,
+    pot: game.pot,
+  });
+  await dbUpdateGame(gameRecord.id, {
+    status: 'finished',
+    ended_at: new Date().toISOString(),
+    winner_id: winnerPlayer.isAI ? undefined : winnerPlayer.id,
+  });
+
+  // Update player stats — only real (non-AI) players
+  for (const p of game.players) {
+    if (p.isAI) continue;
+
+    const dbPlayer = await findPlayerById(p.id);
+    if (!dbPlayer) continue;
+
+    if (p.slot === game.winner) {
+      // Winner: credit pot (only for non-free tiers), increment wins
+      const ethCredit = isFreeTier ? 0 : game.pot;
+      await updatePlayer(p.id, {
+        wins: dbPlayer.wins + 1,
+        total_earned: dbPlayer.total_earned + ethCredit,
+        balance_eth: dbPlayer.balance_eth + ethCredit,
+      });
+    } else {
+      // Loser: increment losses
+      await updatePlayer(p.id, {
+        losses: dbPlayer.losses + 1,
+      });
+    }
+  }
+
+  console.log(`Game ${game.id} settled — winner: ${winnerPlayer.username} (slot ${game.winner}), tier: ${game.tier}, pot: ${game.pot}`);
 }
