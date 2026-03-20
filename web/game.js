@@ -2071,32 +2071,46 @@ function drawQTE() {
   roundRect(ctx, barX, py - 6, barW, 12 * dpr, 4);
   ctx.fill();
 
-  // Sweet spot zone (green in middle)
+  // Sweet spot zone (green in middle) with label
   const sweetStart = barW * 0.3;
   const sweetEnd = barW * 0.7;
   ctx.fillStyle = '#1a3a1a';
   ctx.fillRect(barX + sweetStart, py - 6, sweetEnd - sweetStart, 12 * dpr);
+  // "sweet spot" markers
+  ctx.fillStyle = '#00ff8844';
+  ctx.fillRect(barX + sweetStart, py - 6, 2, 12 * dpr);
+  ctx.fillRect(barX + sweetEnd - 2, py - 6, 2, 12 * dpr);
 
   // Moving indicator
   const indX = barX + barW * progress;
-  ctx.fillStyle = progress > 0.3 && progress < 0.7 ? '#00ff88' : '#ff4444';
+  const inZone = progress > 0.3 && progress < 0.7;
+  ctx.fillStyle = inZone ? '#00ff88' : '#ff4444';
   ctx.shadowColor = ctx.fillStyle;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 12;
   ctx.beginPath();
-  ctx.arc(indX, py, 8 * dpr, 0, Math.PI * 2);
+  ctx.arc(indX, py, 9 * dpr, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Label
+  // Label — big and clear
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${Math.max(14 * dpr, 15)}px monospace`;
+  ctx.font = `bold ${Math.max(16 * dpr, 17)}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('\u2694 TAP NOW!', W / 2, py - barH * 0.5);
+  ctx.fillText('TAP SCREEN NOW!', W / 2, py - barH * 0.6);
 
-  // Subtext
-  ctx.fillStyle = '#888';
-  ctx.font = `${Math.max(10 * dpr, 11)}px monospace`;
-  ctx.fillText('Claw Strike: +1 to dice', W / 2, py + barH * 0.7);
+  // Explanation
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = `bold ${Math.max(11 * dpr, 12)}px monospace`;
+  ctx.fillText('+1 to your highest dice roll', W / 2, py - barH * 0.25);
+
+  // Zone labels under bar
+  ctx.fillStyle = '#444';
+  ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
+  ctx.fillText('miss', barX + sweetStart * 0.5, py + 16 * dpr);
+  ctx.fillStyle = '#00ff88';
+  ctx.fillText('\u2605 sweet spot \u2605', barX + barW * 0.5, py + 16 * dpr);
+  ctx.fillStyle = '#444';
+  ctx.fillText('miss', barX + sweetEnd + (barW - sweetEnd) * 0.5, py + 16 * dpr);
 }
 
 // === MOCK TICKER DATA (scrolls during gameplay) ===
