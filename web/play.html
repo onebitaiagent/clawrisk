@@ -95,22 +95,49 @@
     <div id="withdrawMsg"></div>
     <p style="font-size:10px;color:#555;margin-top:12px">Withdrawals are sent on Base L2. Gas fee deducted automatically.</p>
   </div>
+
+  <!-- Logout -->
+  <div class="wallet-card" style="text-align:center">
+    <button class="wallet-btn ghost" onclick="doLogout();closeWallet()" style="border-color:#ff444466;color:#ff4444">LOG OUT</button>
+  </div>
 </div>
 
-<!-- Signup Overlay -->
+<!-- Signup/Login Overlay -->
 <div class="wallet-overlay" id="signupOverlay">
   <div class="wallet-close" onclick="closeSignup()">&times;</div>
-  <div class="wallet-card" style="margin-top:80px">
+
+  <!-- Tabs -->
+  <div style="display:flex;max-width:340px;width:100%;margin-top:60px;border-bottom:1px solid #1a1a30">
+    <div class="wallet-tab active" id="sTabSignup" onclick="sTab('signup')" style="flex:1;padding:10px;text-align:center;font-weight:bold;cursor:pointer;border-bottom:2px solid #00ff88;color:#00ff88">SIGN UP</div>
+    <div class="wallet-tab" id="sTabLogin" onclick="sTab('login')" style="flex:1;padding:10px;text-align:center;font-weight:bold;cursor:pointer;border-bottom:2px solid transparent;color:#666">LOG IN</div>
+  </div>
+
+  <!-- Signup -->
+  <div class="wallet-card" id="signupPanel" style="max-width:340px">
     <div class="wallet-title">CREATE ACCOUNT</div>
-    <p style="font-size:12px;color:#aaa;margin-bottom:14px">Pick a username to save your progress, access the wallet, and play staked arenas.</p>
+    <p style="font-size:12px;color:#aaa;margin-bottom:12px">Save progress, access wallet, play staked arenas.</p>
     <div class="wallet-label">USERNAME</div>
-    <input class="wallet-input" id="gameSignupName" placeholder="CrabKing42" type="text" maxlength="20" style="font-size:16px">
-    <button class="wallet-btn green" onclick="doGameSignup()" style="margin-top:14px">CREATE ACCOUNT</button>
+    <input class="wallet-input" id="gameSignupName" placeholder="CrabKing42" type="text" maxlength="20">
+    <div class="wallet-label">PASSWORD</div>
+    <input class="wallet-input" id="gameSignupPass" placeholder="min 4 characters" type="password">
+    <button class="wallet-btn green" onclick="doGameSignup()">CREATE ACCOUNT</button>
     <div id="gameSignupMsg"></div>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:#555">
-      or play via Telegram:<br>
-      <a href="https://t.me/clawSpot_bot" target="_blank" style="color:#4488ff;text-decoration:none;font-weight:bold">@clawSpot_bot</a>
-    </div>
+  </div>
+
+  <!-- Login -->
+  <div class="wallet-card" id="loginPanel" style="max-width:340px;display:none">
+    <div class="wallet-title">LOG IN</div>
+    <div class="wallet-label">USERNAME</div>
+    <input class="wallet-input" id="gameLoginName" placeholder="Username" type="text">
+    <div class="wallet-label">PASSWORD</div>
+    <input class="wallet-input" id="gameLoginPass" placeholder="Password" type="password">
+    <button class="wallet-btn green" onclick="doGameLogin()">LOG IN</button>
+    <div id="gameLoginMsg"></div>
+  </div>
+
+  <div style="text-align:center;margin-top:14px;font-size:11px;color:#555;max-width:340px">
+    or play via Telegram:
+    <a href="https://t.me/clawSpot_bot" target="_blank" style="color:#4488ff;text-decoration:none;font-weight:bold">@clawSpot_bot</a>
   </div>
 </div>
 
@@ -213,34 +240,85 @@ function closeWallet() {
 function openHelp() { document.getElementById('helpOverlay').classList.add('show'); }
 function closeHelp() { document.getElementById('helpOverlay').classList.remove('show'); }
 
-// Signup overlay
+// Signup/Login overlay
 function openSignup() { document.getElementById('signupOverlay').classList.add('show'); }
 function closeSignup() { document.getElementById('signupOverlay').classList.remove('show'); }
+function sTab(tab) {
+  document.getElementById('sTabSignup').style.borderColor = tab==='signup'?'#00ff88':'transparent';
+  document.getElementById('sTabSignup').style.color = tab==='signup'?'#00ff88':'#666';
+  document.getElementById('sTabLogin').style.borderColor = tab==='login'?'#00ff88':'transparent';
+  document.getElementById('sTabLogin').style.color = tab==='login'?'#00ff88':'#666';
+  document.getElementById('signupPanel').style.display = tab==='signup'?'block':'none';
+  document.getElementById('loginPanel').style.display = tab==='login'?'block':'none';
+}
+
+function apiBase() { return (typeof net !== 'undefined') ? net.apiBase : ''; }
+
+function handleAuthSuccess(d) {
+  if (typeof net !== 'undefined') {
+    net.token = d.token;
+    net.playerId = d.player.id;
+    net.username = d.player.username;
+    net.saveToken(d.token);
+    if (typeof fetchEthBalance === 'function') fetchEthBalance();
+  }
+}
+
 async function doGameSignup() {
   const name = document.getElementById('gameSignupName').value.trim();
+  const pass = document.getElementById('gameSignupPass').value;
   const msg = document.getElementById('gameSignupMsg');
   if (!name || name.length < 2) { msg.className='wallet-msg err'; msg.textContent='Min 2 characters'; return; }
+  if (!pass || pass.length < 4) { msg.className='wallet-msg err'; msg.textContent='Password min 4 characters'; return; }
   try {
-    const base = (typeof net !== 'undefined' && net.apiBase) ? net.apiBase : '';
-    const res = await fetch(base + '/api/auth/signup', {
+    const res = await fetch(apiBase() + '/api/auth/signup', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ username: name }),
+      body: JSON.stringify({ username: name, password: pass }),
     });
     const d = await res.json();
     if (res.ok) {
-      if (typeof net !== 'undefined') {
-        net.token = d.token;
-        net.playerId = d.player.id;
-        net.username = d.player.username;
-        net.saveToken(d.token);
-        fetchEthBalance();
-      }
+      handleAuthSuccess(d);
       msg.className='wallet-msg ok'; msg.textContent='Welcome, '+d.player.username+'!';
       setTimeout(closeSignup, 800);
     } else {
       msg.className='wallet-msg err'; msg.textContent=d.error||'Failed';
     }
   } catch(e) { msg.className='wallet-msg err'; msg.textContent='Network error'; }
+}
+
+async function doGameLogin() {
+  const name = document.getElementById('gameLoginName').value.trim();
+  const pass = document.getElementById('gameLoginPass').value;
+  const msg = document.getElementById('gameLoginMsg');
+  if (!name || !pass) { msg.className='wallet-msg err'; msg.textContent='Fill in both fields'; return; }
+  try {
+    const res = await fetch(apiBase() + '/api/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: name, password: pass }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      handleAuthSuccess(d);
+      msg.className='wallet-msg ok'; msg.textContent='Welcome back, '+d.player.username+'!';
+      setTimeout(closeSignup, 800);
+    } else {
+      msg.className='wallet-msg err'; msg.textContent=d.error||'Login failed';
+    }
+  } catch(e) { msg.className='wallet-msg err'; msg.textContent='Network error'; }
+}
+
+async function doLogout() {
+  try {
+    if (typeof net !== 'undefined' && net.token) {
+      await fetch(apiBase() + '/api/auth/logout', {
+        method:'POST', headers:{ Authorization:'Bearer '+net.token },
+      });
+      net.token = null; net.playerId = null; net.username = null;
+      game._ethBalance = undefined;
+    }
+    try { localStorage.removeItem('clawspot_token'); } catch(e) {}
+    try { const tg = window.Telegram?.WebApp; if (tg?.CloudStorage) tg.CloudStorage.removeItem('auth_token'); } catch(e) {}
+  } catch(e) {}
 }
 
 function switchTab(tab) {

@@ -27,7 +27,8 @@ interface Player {
   id: string;
   telegram_id?: number;
   username: string;
-  balance_eth: number;  // in wei string would be better for prod
+  password_hash?: string;
+  balance_eth: number;
   balance_shells: number;
   deposit_address?: string;
   deposit_index?: number;
@@ -80,12 +81,25 @@ export async function findPlayerById(id: string): Promise<Player | null> {
   return memStore.players.get(id) || null;
 }
 
+export async function findPlayerByUsername(username: string): Promise<Player | null> {
+  const db = getDb();
+  if (db) {
+    const { data } = await db.from('players').select('*').eq('username', username).single();
+    return data;
+  }
+  for (const p of memStore.players.values()) {
+    if (p.username === username) return p;
+  }
+  return null;
+}
+
 export async function createPlayer(data: Partial<Player>): Promise<Player> {
   const id = data.id || crypto.randomUUID();
   const player: Player = {
     id,
     telegram_id: data.telegram_id,
     username: data.username || 'Guest_' + id.slice(0, 6),
+    password_hash: data.password_hash,
     balance_eth: 0,
     balance_shells: 0,
     deposit_address: data.deposit_address,

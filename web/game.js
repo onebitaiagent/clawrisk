@@ -128,17 +128,15 @@ const net = {
   online: false,
   connecting: false,
 
-  // Detect server — use same origin, or localhost:3847 for dev
   get apiBase() {
-    // If served from the Express server (port 3847), use relative URLs
-    if (location.port === '3847') return '';
-    // Dev: game served from python http.server on 8080, API on 3847
-    return 'http://localhost:3847';
+    // Same origin when served from Express (Railway or local :3847)
+    if (location.port === '8080') return 'http://localhost:3847'; // dev only
+    return ''; // same origin (Railway, or local :3847)
   },
 
   get wsBase() {
-    if (location.port === '3847') return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
-    return 'ws://localhost:3847';
+    if (location.port === '8080') return 'ws://localhost:3847';
+    return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
   },
 
   async auth() {
@@ -2667,4 +2665,22 @@ function gameLoop(ts) {
 }
 
 game.phase = 'title';
+
+// Try to restore saved session on load
+(async function restoreSession() {
+  const saved = await net.loadSavedToken();
+  if (saved) {
+    try {
+      const res = await fetch(net.apiBase + '/api/auth/me', { headers: { Authorization: 'Bearer ' + saved } });
+      if (res.ok) {
+        const d = await res.json();
+        net.token = saved;
+        net.playerId = d.id;
+        net.username = d.username;
+        fetchEthBalance();
+      }
+    } catch(e) {}
+  }
+})();
+
 requestAnimationFrame(gameLoop);

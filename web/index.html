@@ -209,14 +209,33 @@ body { min-height:100vh; overflow-x:hidden; }
 <div class="modal-bg" id="signupModal">
   <div class="modal">
     <div class="modal-close" onclick="closeSignup()">&times;</div>
-    <h2>CREATE ACCOUNT</h2>
-    <p style="font-size:12px;color:#aaa;margin-bottom:16px">Pick a username to save your wins, balance, and leaderboard rank.</p>
-    <div class="modal-label">USERNAME</div>
-    <input class="modal-input" id="signupName" placeholder="CrabKing42" type="text" maxlength="20" style="font-size:16px">
-    <button class="modal-btn" onclick="doSignup()">CREATE ACCOUNT</button>
-    <div id="signupMsg"></div>
+
+    <div class="modal-tabs">
+      <div class="modal-tab active" id="lpTabSignup" onclick="lpSTab('signup')">SIGN UP</div>
+      <div class="modal-tab" id="lpTabLogin" onclick="lpSTab('login')">LOG IN</div>
+    </div>
+
+    <div id="lpSignupPanel">
+      <p style="font-size:12px;color:#aaa;margin-bottom:12px">Create an account to save progress, access wallet, and play staked arenas.</p>
+      <div class="modal-label">USERNAME</div>
+      <input class="modal-input" id="signupName" placeholder="CrabKing42" type="text" maxlength="20">
+      <div class="modal-label">PASSWORD</div>
+      <input class="modal-input" id="signupPass" placeholder="min 4 characters" type="password">
+      <button class="modal-btn" onclick="doSignup()">CREATE ACCOUNT</button>
+      <div id="signupMsg"></div>
+    </div>
+
+    <div id="lpLoginPanel" style="display:none">
+      <div class="modal-label">USERNAME</div>
+      <input class="modal-input" id="loginName" placeholder="Username" type="text">
+      <div class="modal-label">PASSWORD</div>
+      <input class="modal-input" id="loginPass" placeholder="Password" type="password">
+      <button class="modal-btn" onclick="doLogin()">LOG IN</button>
+      <div id="loginMsg"></div>
+    </div>
+
     <div style="text-align:center;margin-top:16px;font-size:12px;color:#666">
-      <span>or play via Telegram:</span><br>
+      or play via Telegram:
       <a href="https://t.me/clawSpot_bot" target="_blank" style="color:var(--blue);text-decoration:none;font-weight:bold">@clawSpot_bot</a>
     </div>
   </div>
@@ -576,28 +595,61 @@ async function mDoWithdraw() {
   } catch(e) { msg.className='modal-msg err'; msg.textContent='Network error'; }
 }
 
-// === SIGNUP ===
+// === SIGNUP / LOGIN ===
 function showSignup() { document.getElementById('signupModal').classList.add('show'); }
 function closeSignup() { document.getElementById('signupModal').classList.remove('show'); }
+function lpSTab(tab) {
+  document.getElementById('lpTabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('lpTabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('lpSignupPanel').style.display = tab==='signup'?'block':'none';
+  document.getElementById('lpLoginPanel').style.display = tab==='login'?'block':'none';
+}
+
+function lpHandleAuth(d) {
+  lpToken = d.token;
+  try { localStorage.setItem('clawspot_token', d.token); } catch(e) {}
+  showLoggedIn(d.player.username, d.player.balance_eth);
+}
 
 async function doSignup() {
   const name = document.getElementById('signupName').value.trim();
+  const pass = document.getElementById('signupPass').value;
   const msg = document.getElementById('signupMsg');
   if (!name || name.length < 2) { msg.className='modal-msg err'; msg.textContent='Min 2 characters'; return; }
+  if (!pass || pass.length < 4) { msg.className='modal-msg err'; msg.textContent='Password min 4 characters'; return; }
   try {
     const res = await fetch('/api/auth/signup', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ username: name }),
+      body: JSON.stringify({ username: name, password: pass }),
     });
     const d = await res.json();
     if (res.ok) {
-      lpToken = d.token;
-      try { localStorage.setItem('clawspot_token', d.token); } catch(e) {}
+      lpHandleAuth(d);
       msg.className='modal-msg ok'; msg.textContent='Welcome, '+d.player.username+'!';
-      showLoggedIn(d.player.username, d.player.balance_eth);
       setTimeout(closeSignup, 1000);
     } else {
       msg.className='modal-msg err'; msg.textContent=d.error||'Failed';
+    }
+  } catch(e) { msg.className='modal-msg err'; msg.textContent='Network error'; }
+}
+
+async function doLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const msg = document.getElementById('loginMsg');
+  if (!name || !pass) { msg.className='modal-msg err'; msg.textContent='Fill in both fields'; return; }
+  try {
+    const res = await fetch('/api/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: name, password: pass }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      lpHandleAuth(d);
+      msg.className='modal-msg ok'; msg.textContent='Welcome back, '+d.player.username+'!';
+      setTimeout(closeSignup, 1000);
+    } else {
+      msg.className='modal-msg err'; msg.textContent=d.error||'Login failed';
     }
   } catch(e) { msg.className='modal-msg err'; msg.textContent='Network error'; }
 }

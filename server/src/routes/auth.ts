@@ -1,7 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { verifyTelegramAuth } from '../services/telegram';
-import { findPlayerByTelegramId, findPlayerById, createPlayer } from '../services/db';
+import { findPlayerByTelegramId, findPlayerById, findPlayerByUsername, createPlayer } from '../services/db';
 import crypto from 'crypto';
+
+function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password + 'clawspot_salt_2026').digest('hex');
+}
 
 export const authRouter = Router();
 
@@ -76,18 +80,27 @@ authRouter.post('/guest', async (_req: Request, res: Response) => {
   }
 });
 
-// Sign up with username (non-TG users)
+// Sign up with username + password
 authRouter.post('/signup', async (req: Request, res: Response) => {
   try {
-    const { username } = req.body;
+    const { username, password } = req.body;
     if (!username || username.length < 2 || username.length > 20) {
       return res.status(400).json({ error: 'Username must be 2-20 characters' });
     }
-    // Sanitize: alphanumeric + underscore only
+    if (!password || password.length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    }
     const clean = username.replace(/[^a-zA-Z0-9_]/g, '');
     if (clean.length < 2) return res.status(400).json({ error: 'Invalid characters in username' });
 
-    const player = await createPlayer({ username: clean });
+    // Check if username taken
+    const existing = await findPlayerByUsername(clean);
+    if (existing) return res.status(400).json({ error: 'Username already taken' });
+
+    const player = await createPlayer({
+      username: clean,
+      password_hash: hashPassword(password),
+    });
     const token = crypto.randomBytes(32).toString('hex');
     sessions.set(token, player.id);
 
@@ -106,6 +119,46 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Failed to create account' });
   }
+});
+
+// Login with username + password
+authRouter.post('/login', async (req: Request, res: Response) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+    const player = await findPlayerByUsername(username);
+    if (!player) return res.status(401).json({ error: 'User not found' });
+    if (!player.password_hash) return res.status(401).json({ error: 'Account has no password (use Telegram)' });
+    if (player.password_hash !== hashPassword(password)) return res.status(401).json({ error: 'Wrong password' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, player.id);
+
+    res.json({
+      token,
+      player: {
+        id: player.id,
+        username: player.username,
+        balance_eth: player.balance_eth,
+        balance_shells: player.balance_shells,
+        wins: player.wins,
+        level: player.level,
+      },
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Logout
+authRouter.post('/logout', (req: Request, res: Response) => {
+  const auth = req.headers.authorization;
+  if (auth?.startsWith('Bearer ')) {
+    sessions.delete(auth.slice(7));
+  }
+  res.json({ ok: true });
 });
 
 // Get current player info
