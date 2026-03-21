@@ -11,7 +11,7 @@ botRouter.post('/webhook', (req: Request, res: Response) => {
     const chatId = update.message.chat.id;
     const firstName = update.message.from?.first_name || 'Crab';
     sendMessage(chatId,
-      `🦀 Welcome to ClawSpot Arena, ${firstName}!\n\n` +
+      `🦀 Welcome to ClawRisk Arena, ${firstName}!\n\n` +
       `⚔ Territory warfare with crabs. RISK meets crypto.\n\n` +
       `Deploy troops, attack enemies, conquer the 10x10 grid.\n` +
       `Capture 60 spots to dominate and win ETH!\n\n` +
@@ -19,7 +19,7 @@ botRouter.post('/webhook', (req: Request, res: Response) => {
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: '🦀 Play ClawSpot Arena', web_app: { url: getWebAppUrl() } }
+            { text: '🦀 Play ClawRisk Arena', web_app: { url: getWebAppUrl() } }
           ]]
         }
       }
@@ -30,7 +30,7 @@ botRouter.post('/webhook', (req: Request, res: Response) => {
   if (update.message?.text === '/help') {
     const chatId = update.message.chat.id;
     sendMessage(chatId,
-      `🦀 ClawSpot Arena — How to Play\n\n` +
+      `🦀 ClawRisk Arena — How to Play\n\n` +
       `1️⃣ Deploy troops on your green spots\n` +
       `2️⃣ Select a spot → tap adjacent enemy to attack\n` +
       `3️⃣ RISK-style dice combat decides the winner\n` +
@@ -54,7 +54,7 @@ botRouter.post('/webhook', (req: Request, res: Response) => {
     sendMessage(chatId, `🦀 Let's go!`, {
       reply_markup: {
         inline_keyboard: [[
-          { text: '⚔ Play ClawSpot Arena', web_app: { url: getWebAppUrl() } }
+          { text: '⚔ Play ClawRisk Arena', web_app: { url: getWebAppUrl() } }
         ]]
       }
     });

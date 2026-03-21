@@ -1,4 +1,4 @@
--- ClawSpot Arena — Supabase Schema
+-- ClawRisk Arena — Supabase Schema
 -- Run this in Supabase SQL editor
 
 -- Players

@@ -1,4 +1,4 @@
-# ClawSpot Arena — Build Skill
+# ClawRisk Arena — Build Skill
 
 > You are building a mobile-first territory warfare browser game. No wallet connect. No ONEBIT. Standalone project.
 

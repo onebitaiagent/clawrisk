@@ -55,5 +55,5 @@ initEth();
 startDepositWatcher();
 
 server.listen(PORT, () => {
-  console.log(`ClawSpot Arena server running on :${PORT}`);
+  console.log(`ClawRisk Arena server running on :${PORT}`);
 });

@@ -4,7 +4,7 @@ import { findPlayerByTelegramId, findPlayerById, findPlayerByUsername, createPla
 import crypto from 'crypto';
 
 function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password + 'clawspot_salt_2026').digest('hex');
+  return crypto.createHash('sha256').update(password + 'clawrisk_salt_2026').digest('hex');
 }
 
 export const authRouter = Router();

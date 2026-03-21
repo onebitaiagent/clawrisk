@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ClawSpot Arena — Play</title>
+<title>ClawRisk Arena — Play</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -137,7 +137,7 @@
 
   <div style="text-align:center;margin-top:14px;font-size:11px;color:#555;max-width:340px">
     or play via Telegram:
-    <a href="https://t.me/clawSpot_bot" target="_blank" style="color:#4488ff;text-decoration:none;font-weight:bold">@clawSpot_bot</a>
+    <a href="https://t.me/clawrisk_bot" target="_blank" style="color:#4488ff;text-decoration:none;font-weight:bold">@clawrisk_bot</a>
   </div>
 </div>
 
@@ -316,7 +316,7 @@ async function doLogout() {
       net.token = null; net.playerId = null; net.username = null;
       game._ethBalance = undefined;
     }
-    try { localStorage.removeItem('clawspot_token'); } catch(e) {}
+    try { localStorage.removeItem('clawrisk_token'); } catch(e) {}
     try { const tg = window.Telegram?.WebApp; if (tg?.CloudStorage) tg.CloudStorage.removeItem('auth_token'); } catch(e) {}
   } catch(e) {}
 }

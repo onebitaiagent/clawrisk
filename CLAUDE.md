@@ -1,7 +1,7 @@
-# ClawSpot Arena
+# ClawRisk Arena
 
 ## What This Is
-Mobile-first territory warfare game. RISK meets ClawSpot.fun. Runs in browser and as a Telegram Mini App. No wallet connect — players deposit ETH to a server-generated address, play, withdraw.
+Mobile-first territory warfare game. RISK meets ClawRisk.fun. Runs in browser and as a Telegram Mini App. No wallet connect — players deposit ETH to a server-generated address, play, withdraw.
 
 ## Read Order
 1. `SKILL.md` — **build instructions** — architecture, TG integration, deposit flow, file structure, priority order

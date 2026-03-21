@@ -1,5 +1,5 @@
 #!/bin/bash
-# ClawSpot Arena — Telegram Bot Setup
+# ClawRisk Arena — Telegram Bot Setup
 # Run this after getting your bot token from @BotFather
 #
 # Usage:
@@ -17,7 +17,7 @@ if [ -z "$TOKEN" ] || [ -z "$URL" ]; then
   exit 1
 fi
 
-echo "Setting up ClawSpot Arena bot..."
+echo "Setting up ClawRisk Arena bot..."
 echo ""
 
 # 1. Set webhook
@@ -33,7 +33,7 @@ curl -s "https://api.telegram.org/bot${TOKEN}/setMyCommands" \
   -H "Content-Type: application/json" \
   -d '{
     "commands": [
-      {"command": "start", "description": "Start ClawSpot Arena"},
+      {"command": "start", "description": "Start ClawRisk Arena"},
       {"command": "play", "description": "Open the game"},
       {"command": "balance", "description": "Check your ETH balance"},
       {"command": "help", "description": "How to play"}

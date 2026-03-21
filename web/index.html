@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>ClawSpot Arena — Territory Warfare with Crabs</title>
+<title>ClawRisk Arena — Territory Warfare with Crabs</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script>
 // Telegram Mini App setup
@@ -186,12 +186,12 @@ body { min-height:100vh; overflow-x:hidden; }
 
 <!-- Nav -->
 <nav class="nav">
-  <div class="nav-logo"><span>CLAWSPOT </span><span>ARENA</span></div>
+  <div class="nav-logo"><span>CLAWRISK </span><span>ARENA</span></div>
   <div class="nav-right">
     <!-- Logged-out state -->
     <div id="navLoggedOut">
       <a class="btn btn-green btn-sm" href="#" onclick="showSignup();return false">Create Account</a>
-      <a class="btn btn-sm" style="border-color:#888;color:#888" href="https://t.me/clawSpot_bot" target="_blank">Open in TG</a>
+      <a class="btn btn-sm" style="border-color:#888;color:#888" href="https://t.me/clawrisk_bot" target="_blank">Open in TG</a>
     </div>
     <!-- Logged-in state -->
     <div id="navLoggedIn" style="display:none">
@@ -236,7 +236,7 @@ body { min-height:100vh; overflow-x:hidden; }
 
     <div style="text-align:center;margin-top:16px;font-size:12px;color:#666">
       or play via Telegram:
-      <a href="https://t.me/clawSpot_bot" target="_blank" style="color:var(--blue);text-decoration:none;font-weight:bold">@clawSpot_bot</a>
+      <a href="https://t.me/clawrisk_bot" target="_blank" style="color:var(--blue);text-decoration:none;font-weight:bold">@clawrisk_bot</a>
     </div>
   </div>
 </div>
@@ -277,7 +277,7 @@ body { min-height:100vh; overflow-x:hidden; }
 <!-- Hero -->
 <section class="hero">
   <div class="crab">🦀</div>
-  <h1><span class="gold">CLAWSPOT</span><br><span class="green">ARENA</span></h1>
+  <h1><span class="gold">CLAWRISK</span><br><span class="green">ARENA</span></h1>
   <p class="sub">RISK meets crypto. <b>Deploy crabs. Conquer territory. Win ETH.</b></p>
   <a class="btn btn-play" href="play.html">⚔ PLAY NOW</a>
   <div class="hero-stats">
@@ -389,7 +389,7 @@ body { min-height:100vh; overflow-x:hidden; }
 
 <!-- Footer -->
 <footer class="footer">
-  <p>🦀 <a href="play.html">Play ClawSpot Arena</a> — RISK meets ClawSpot.fun</p>
+  <p>🦀 <a href="play.html">Play ClawRisk Arena</a> — Territory Warfare on Base L2</p>
   <p>Built on Base L2 • No wallet connect required • Telegram Mini App</p>
 </footer>
 
@@ -510,7 +510,7 @@ let lpToken = null;
 async function lpAuth() {
   if (lpToken) return lpToken;
   // Only return saved token — never auto-create guest on landing page
-  try { const s = localStorage.getItem('clawspot_token'); if (s) { lpToken = s; return s; } } catch(e) {}
+  try { const s = localStorage.getItem('clawrisk_token'); if (s) { lpToken = s; return s; } } catch(e) {}
   return null;
 }
 
@@ -607,7 +607,7 @@ function lpSTab(tab) {
 
 function lpHandleAuth(d) {
   lpToken = d.token;
-  try { localStorage.setItem('clawspot_token', d.token); } catch(e) {}
+  try { localStorage.setItem('clawrisk_token', d.token); } catch(e) {}
   showLoggedIn(d.player.username, d.player.balance_eth);
 }
 
@@ -665,7 +665,7 @@ function showLoggedIn(username, balance) {
 async function autoLogin() {
   // Check for saved token
   let saved = null;
-  try { saved = localStorage.getItem('clawspot_token'); } catch(e) {}
+  try { saved = localStorage.getItem('clawrisk_token'); } catch(e) {}
 
   // TG auth if inside Telegram
   const tgApp = window.Telegram?.WebApp;
@@ -678,7 +678,7 @@ async function autoLogin() {
       if (res.ok) {
         const d = await res.json();
         saved = d.token;
-        try { localStorage.setItem('clawspot_token', saved); } catch(e) {}
+        try { localStorage.setItem('clawrisk_token', saved); } catch(e) {}
       }
     } catch(e) {}
   }

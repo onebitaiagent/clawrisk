@@ -140,13 +140,13 @@ ctx.arc(cx + s * 0.26, eyeY - 3, s * 0.03, 0, Math.PI * 2);
 ctx.fill();
 
 // === TEXT ===
-// "CLAWSPOT" above crab
+// "CLAWRISK" above crab
 ctx.fillStyle = '#ffdd00';
 ctx.font = 'bold 52px monospace';
 ctx.textAlign = 'center';
 ctx.shadowColor = '#ffdd00';
 ctx.shadowBlur = 15;
-ctx.fillText('CLAWSPOT', cx, 100);
+ctx.fillText('CLAWRISK', cx, 100);
 ctx.shadowBlur = 0;
 
 // "ARENA" below

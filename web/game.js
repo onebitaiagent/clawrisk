@@ -1,5 +1,5 @@
 // ============================================================
-// CLAWSPOT ARENA — Territory Warfare Game
+// CLAWRISK ARENA — Territory Warfare Game
 // Canvas 2D, vanilla JS, mobile-first, <200KB
 // ============================================================
 
@@ -195,7 +195,7 @@ const net = {
 
   saveToken(token) {
     try {
-      localStorage.setItem('clawspot_token', token);
+      localStorage.setItem('clawrisk_token', token);
     } catch(e) {}
     try {
       const tg = window.Telegram?.WebApp;
@@ -219,7 +219,7 @@ const net = {
     } catch(e) {}
     // Fallback to localStorage
     try {
-      return localStorage.getItem('clawspot_token');
+      return localStorage.getItem('clawrisk_token');
     } catch(e) {}
     return null;
   },
@@ -2350,7 +2350,7 @@ function drawTitle() {
   ctx.fillStyle = '#ffdd00';
   ctx.font = `bold ${ts}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('CLAWSPOT', W / 2, H * 0.22);
+  ctx.fillText('CLAWRISK', W / 2, H * 0.22);
   ctx.shadowColor = '#00ff88';
   ctx.fillStyle = '#00ff88';
   ctx.fillText('ARENA', W / 2, H * 0.22 + ts * 1.1);
