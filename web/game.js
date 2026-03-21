@@ -784,11 +784,19 @@ function handleTap(sx,sy){
   const px=sx*devicePixelRatio,py=sy*devicePixelRatio;
   spawnRipple(px,py,'#ffffff');
   if(game.phase==='title'){
-    // Wallet button
-    if(game._walletBtnRect){
+    // Wallet button (only if logged in)
+    if(game._walletBtnRect && net.token){
       const wb=game._walletBtnRect;
       if(px>=wb.x&&px<=wb.x+wb.w&&py>=wb.y&&py<=wb.y+wb.h){
         if(typeof openWallet==='function') openWallet();
+        return;
+      }
+    }
+    // Sign Up button (only if NOT logged in)
+    if(game._signupBtnRect && !net.token){
+      const sb=game._signupBtnRect;
+      if(px>=sb.x&&px<=sb.x+sb.w&&py>=sb.y&&py<=sb.y+sb.h){
+        if(typeof openSignup==='function') openSignup();
         return;
       }
     }
@@ -836,8 +844,8 @@ function handleTap(sx,sy){
       if(typeof openHelp==='function') openHelp();return;
     }
   }
-  // In-game wallet button
-  if(game._walletBtnRect2){
+  // In-game wallet button (only if logged in)
+  if(game._walletBtnRect2 && net.token){
     const wb=game._walletBtnRect2;
     if(px>=wb.x&&px<=wb.x+wb.w&&py>=wb.y&&py<=wb.y+wb.h){
       if(typeof openWallet==='function') openWallet();return;
@@ -1776,28 +1784,28 @@ function drawHUD() {
   ctx.fillText('?', helpX + muteSize/2, muteY + muteSize*0.62);
   game._helpBtnRect2 = { x: helpX, y: muteY, w: muteSize, h: muteSize };
 
-  // Wallet button (next to help)
-  const walX = helpX - muteSize - 6 * dpr;
-  ctx.fillStyle = 'rgba(20,20,40,0.7)';
-  ctx.beginPath(); ctx.arc(walX + muteSize/2, muteY + muteSize/2, muteSize/2, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ffcc00';
-  ctx.font = `${Math.max(13*dpr,14)}px monospace`;
-  ctx.fillText('\u{1F4B0}', walX + muteSize/2, muteY + muteSize*0.62);
-  game._walletBtnRect2 = { x: walX, y: muteY, w: muteSize, h: muteSize };
-
-  // ETH balance display (below wallet button)
-  if (net.token && game._ethBalance !== undefined) {
+  game._walletBtnRect2 = null;
+  if (net.token) {
+    // Wallet button (next to help) — only when logged in
+    const walX = helpX - muteSize - 6 * dpr;
+    ctx.fillStyle = 'rgba(20,20,40,0.7)';
+    ctx.beginPath(); ctx.arc(walX + muteSize/2, muteY + muteSize/2, muteSize/2, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#ffcc00';
+    ctx.font = `${Math.max(13*dpr,14)}px monospace`;
+    ctx.fillText('\u{1F4B0}', walX + muteSize/2, muteY + muteSize*0.62);
+    game._walletBtnRect2 = { x: walX, y: muteY, w: muteSize, h: muteSize };
+
+    // ETH balance + username
     ctx.font = `${Math.max(8*dpr,9)}px monospace`;
     ctx.textAlign = 'right';
-    ctx.fillText(game._ethBalance + ' ETH', muteX + muteSize, muteY + muteSize + 14 * dpr);
-  }
-  // Username
-  if (net.username) {
-    ctx.fillStyle = '#00ff88';
-    ctx.font = `${Math.max(8*dpr,9)}px monospace`;
-    ctx.textAlign = 'right';
-    ctx.fillText(net.username, muteX + muteSize, muteY + muteSize + 26 * dpr);
+    if (game._ethBalance) {
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillText(game._ethBalance + ' ETH', muteX + muteSize, muteY + muteSize + 14 * dpr);
+    }
+    if (net.username) {
+      ctx.fillStyle = '#00ff88';
+      ctx.fillText(net.username, muteX + muteSize, muteY + muteSize + 26 * dpr);
+    }
   }
 }
 
@@ -2374,24 +2382,51 @@ function drawTitle() {
     ctx.fillText(t, W * 0.08 + (i + 0.5) * (W * 0.84 / 3), stY + 20 * dpr);
   });
 
-  // Top-right icon buttons (wallet + help)
+  // Top-right buttons
   const iconSize = 36 * dpr;
-  const iconGap = 8 * dpr;
   const iconY = 12 * dpr;
+  const loggedIn = !!net.token;
+  game._walletBtnRect = null;
+  game._signupBtnRect = null;
 
-  // Wallet button
-  const wbX = W - iconSize * 2 - iconGap - 12 * dpr;
-  ctx.fillStyle = '#0c0c1a';
-  roundRect(ctx, wbX, iconY, iconSize, iconSize, 8); ctx.fill();
-  ctx.strokeStyle = '#ffcc0066'; ctx.lineWidth = 1;
-  roundRect(ctx, wbX, iconY, iconSize, iconSize, 8); ctx.stroke();
-  ctx.fillStyle = '#ffcc00';
-  ctx.font = `${Math.max(16 * dpr, 17)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText('\u{1F4B0}', wbX + iconSize / 2, iconY + iconSize * 0.65);
-  game._walletBtnRect = { x: wbX, y: iconY, w: iconSize, h: iconSize };
+  if (loggedIn) {
+    // Wallet button (logged in)
+    const wbX = W - iconSize * 2 - 8 * dpr - 12 * dpr;
+    ctx.fillStyle = '#0c0c1a';
+    roundRect(ctx, wbX, iconY, iconSize, iconSize, 8); ctx.fill();
+    ctx.strokeStyle = '#ffcc0066'; ctx.lineWidth = 1;
+    roundRect(ctx, wbX, iconY, iconSize, iconSize, 8); ctx.stroke();
+    ctx.fillStyle = '#ffcc00';
+    ctx.font = `${Math.max(16 * dpr, 17)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('\u{1F4B0}', wbX + iconSize / 2, iconY + iconSize * 0.65);
+    game._walletBtnRect = { x: wbX, y: iconY, w: iconSize, h: iconSize };
 
-  // Help/FAQ button
+    // Show username + balance below
+    ctx.fillStyle = '#00ff88';
+    ctx.font = `bold ${Math.max(9 * dpr, 10)}px monospace`;
+    ctx.textAlign = 'right';
+    ctx.fillText(net.username || '', W - 12 * dpr, iconY + iconSize + 14 * dpr);
+    if (game._ethBalance) {
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillText(game._ethBalance + ' ETH', W - 12 * dpr, iconY + iconSize + 26 * dpr);
+    }
+  } else {
+    // Sign Up button (not logged in)
+    const sbW = 90 * dpr, sbH = 30 * dpr;
+    const sbX = W - sbW - iconSize - 20 * dpr, sbY = iconY + 3 * dpr;
+    ctx.fillStyle = '#0d2d14';
+    roundRect(ctx, sbX, sbY, sbW, sbH, 8); ctx.fill();
+    ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1.5;
+    roundRect(ctx, sbX, sbY, sbW, sbH, 8); ctx.stroke();
+    ctx.fillStyle = '#00ff88';
+    ctx.font = `bold ${Math.max(11 * dpr, 12)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('SIGN UP', sbX + sbW / 2, sbY + sbH * 0.65);
+    game._signupBtnRect = { x: sbX, y: sbY, w: sbW, h: sbH };
+  }
+
+  // Help/FAQ button (always shown)
   const hbX = W - iconSize - 12 * dpr;
   ctx.fillStyle = '#0c0c1a';
   roundRect(ctx, hbX, iconY, iconSize, iconSize, 8); ctx.fill();
@@ -2399,6 +2434,7 @@ function drawTitle() {
   roundRect(ctx, hbX, iconY, iconSize, iconSize, 8); ctx.stroke();
   ctx.fillStyle = '#4488ff';
   ctx.font = `bold ${Math.max(18 * dpr, 19)}px monospace`;
+  ctx.textAlign = 'center';
   ctx.fillText('?', hbX + iconSize / 2, iconY + iconSize * 0.65);
   game._helpBtnRect = { x: hbX, y: iconY, w: iconSize, h: iconSize };
 
@@ -2422,39 +2458,47 @@ function drawTitle() {
   ctx.textAlign = 'center';
   ctx.fillText('\u2694 FREE PLAY', W / 2, playBtnY + playBtnH * 0.62);
 
-  // Staked arena tier buttons (small row)
+  // Staked arena tier buttons — only show when logged in
   tierButtonRects = [];
-  const tbW = Math.min(W * 0.88, 420 * dpr);
   const tierY = H * 0.84;
-  const tierBtnW = (tbW - 12 * dpr * 3) / 4;
-  const tierBtnH = 32 * dpr;
-  const tierStartX = (W - tbW) / 2;
 
-  ctx.fillStyle = '#555';
-  ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
-  ctx.fillText('STAKED ARENAS', W / 2, tierY - 6);
+  if (loggedIn) {
+    const tbW = Math.min(W * 0.88, 420 * dpr);
+    const tierBtnW = (tbW - 12 * dpr * 3) / 4;
+    const tierBtnH = 32 * dpr;
+    const tierStartX = (W - tbW) / 2;
 
-  LOBBY_TIERS.forEach((tier, i) => {
-    const tx = tierStartX + i * (tierBtnW + 12 * dpr);
-    ctx.fillStyle = '#0c0c1a';
-    roundRect(ctx, tx, tierY, tierBtnW, tierBtnH, 6); ctx.fill();
-    ctx.strokeStyle = tier.color + '88';
-    ctx.lineWidth = 1;
-    roundRect(ctx, tx, tierY, tierBtnW, tierBtnH, 6); ctx.stroke();
-    ctx.fillStyle = tier.color;
-    ctx.font = `bold ${Math.max(9 * dpr, 10)}px monospace`;
+    ctx.fillStyle = '#555';
+    ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText(tier.name, tx + tierBtnW / 2, tierY + tierBtnH * 0.4);
-    ctx.fillStyle = '#888';
-    ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
-    ctx.fillText(tier.entry + ' ETH', tx + tierBtnW / 2, tierY + tierBtnH * 0.78);
-    tierButtonRects.push({ x: tx, y: tierY, w: tierBtnW, h: tierBtnH, tier: tier.key });
-  });
+    ctx.fillText('STAKED ARENAS', W / 2, tierY - 6);
 
-  ctx.fillStyle = '#333';
-  ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText('Join a staked arena to win ETH', W / 2, tierY + tierBtnH + 14 * dpr);
+    LOBBY_TIERS.forEach((tier, i) => {
+      const tx = tierStartX + i * (tierBtnW + 12 * dpr);
+      ctx.fillStyle = '#0c0c1a';
+      roundRect(ctx, tx, tierY, tierBtnW, tierBtnH, 6); ctx.fill();
+      ctx.strokeStyle = tier.color + '88'; ctx.lineWidth = 1;
+      roundRect(ctx, tx, tierY, tierBtnW, tierBtnH, 6); ctx.stroke();
+      ctx.fillStyle = tier.color;
+      ctx.font = `bold ${Math.max(9 * dpr, 10)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillText(tier.name, tx + tierBtnW / 2, tierY + tierBtnH * 0.4);
+      ctx.fillStyle = '#888';
+      ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
+      ctx.fillText(tier.entry + ' ETH', tx + tierBtnW / 2, tierY + tierBtnH * 0.78);
+      tierButtonRects.push({ x: tx, y: tierY, w: tierBtnW, h: tierBtnH, tier: tier.key });
+    });
+    ctx.fillStyle = '#333';
+    ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Join a staked arena to win ETH', W / 2, tierY + 32 * dpr + 14 * dpr);
+  } else {
+    // Not logged in — show sign up prompt
+    ctx.fillStyle = '#555';
+    ctx.font = `${Math.max(10 * dpr, 11)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Sign up to play staked arenas & deposit ETH', W / 2, tierY + 10 * dpr);
+  }
 
   // Ticker on top
   drawTicker();

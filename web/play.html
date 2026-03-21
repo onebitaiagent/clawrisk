@@ -97,6 +97,23 @@
   </div>
 </div>
 
+<!-- Signup Overlay -->
+<div class="wallet-overlay" id="signupOverlay">
+  <div class="wallet-close" onclick="closeSignup()">&times;</div>
+  <div class="wallet-card" style="margin-top:80px">
+    <div class="wallet-title">CREATE ACCOUNT</div>
+    <p style="font-size:12px;color:#aaa;margin-bottom:14px">Pick a username to save your progress, access the wallet, and play staked arenas.</p>
+    <div class="wallet-label">USERNAME</div>
+    <input class="wallet-input" id="gameSignupName" placeholder="CrabKing42" type="text" maxlength="20" style="font-size:16px">
+    <button class="wallet-btn green" onclick="doGameSignup()" style="margin-top:14px">CREATE ACCOUNT</button>
+    <div id="gameSignupMsg"></div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:#555">
+      or play via Telegram:<br>
+      <a href="https://t.me/clawSpot_bot" target="_blank" style="color:#4488ff;text-decoration:none;font-weight:bold">@clawSpot_bot</a>
+    </div>
+  </div>
+</div>
+
 <!-- Help/FAQ Overlay -->
 <div class="help-overlay" id="helpOverlay">
   <div class="help-close" onclick="closeHelp()">&times;</div>
@@ -195,6 +212,36 @@ function closeWallet() {
 // Help overlay
 function openHelp() { document.getElementById('helpOverlay').classList.add('show'); }
 function closeHelp() { document.getElementById('helpOverlay').classList.remove('show'); }
+
+// Signup overlay
+function openSignup() { document.getElementById('signupOverlay').classList.add('show'); }
+function closeSignup() { document.getElementById('signupOverlay').classList.remove('show'); }
+async function doGameSignup() {
+  const name = document.getElementById('gameSignupName').value.trim();
+  const msg = document.getElementById('gameSignupMsg');
+  if (!name || name.length < 2) { msg.className='wallet-msg err'; msg.textContent='Min 2 characters'; return; }
+  try {
+    const base = (typeof net !== 'undefined' && net.apiBase) ? net.apiBase : '';
+    const res = await fetch(base + '/api/auth/signup', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: name }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      if (typeof net !== 'undefined') {
+        net.token = d.token;
+        net.playerId = d.player.id;
+        net.username = d.player.username;
+        net.saveToken(d.token);
+        fetchEthBalance();
+      }
+      msg.className='wallet-msg ok'; msg.textContent='Welcome, '+d.player.username+'!';
+      setTimeout(closeSignup, 800);
+    } else {
+      msg.className='wallet-msg err'; msg.textContent=d.error||'Failed';
+    }
+  } catch(e) { msg.className='wallet-msg err'; msg.textContent='Network error'; }
+}
 
 function switchTab(tab) {
   document.getElementById('tabDeposit').classList.toggle('active', tab === 'deposit');
