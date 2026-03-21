@@ -29,42 +29,63 @@ resize();
 
 // === CONSTANTS ===
 const GRID = 10;
-const PLAYER_COLORS     = ['#00ff88','#ff4444','#4488ff','#ffaa00'];
-const PLAYER_COLORS_DIM = ['#00994d','#991f1f','#1f5599','#996600'];
-const PLAYER_NAMES = ['You','Red Claw','Blue Tide','Gold Shell'];
 const BG_COLOR = '#060614';
 
+// === SPECIES (characters) ===
+const SPECIES = {
+  crab:     { name:'Iron Crab',    icon:'\u{1F980}', color:'#00ff88', passive:'Shell Armor: -1 damage taken on defense' },
+  octopus:  { name:'Storm Kraken', icon:'\u{1F419}', color:'#ff4444', passive:'Ink Cloud: +1 attack die on deep water' },
+  lobster:  { name:'Reef Lobster', icon:'\u{1F99E}', color:'#4488ff', passive:'Fortified Claws: +1 defense on reef terrain' },
+  turtle:   { name:'Sea Titan',    icon:'\u{1F422}', color:'#ffaa00', passive:'Ancient Shell: starts with +1 troop per spot' },
+  jellyfish:{ name:'Drift Jelly',  icon:'\u{1FAB8}', color:'#cc44ff', passive:'Electric Pulse: QTE sweet spot 20% wider' },
+  shark:    { name:'Abyss Hunter', icon:'\u{1F988}', color:'#00dddd', passive:'Blood Frenzy: +1 attack after capturing a spot' },
+};
+
+const SPECIES_LIST = ['crab','octopus','lobster','turtle','jellyfish','shark'];
+
+const PLAYER_COLORS     = ['#00ff88','#ff4444','#4488ff','#ffaa00','#cc44ff','#00dddd'];
+const PLAYER_COLORS_DIM = ['#00994d','#991f1f','#1f5599','#996600','#772299','#009999'];
+const PLAYER_NAMES = ['You','Storm Kraken','Reef Lobster','Abyss Hunter'];
+
+// === OCEANS (regions as real-world oceans) ===
 const TERRAIN = {
-  shore: {name:'Shore',      color:'#c4a435', bg:'#2a2510', atkMod:0,  defMod:0, shellMult:1  },
-  reef:  {name:'Reef',       color:'#e05a2a', bg:'#2a1510', atkMod:0,  defMod:1, shellMult:1.5},
-  deep:  {name:'Deep Water', color:'#1a3a8a', bg:'#080e22', atkMod:-1, defMod:0, shellMult:1  },
-  coral: {name:'Coral',      color:'#b83a8a', bg:'#200e1a', atkMod:0,  defMod:0, shellMult:2  },
-  crown: {name:'Crown',      color:'#ddc020', bg:'#2a2510', atkMod:0,  defMod:0, shellMult:3  },
+  shore:  {name:'Shallows',     color:'#c4a435', bg:'#2a2510', atkMod:0,  defMod:0, shellMult:1,   icon:'~'},
+  reef:   {name:'Coral Reef',   color:'#e05a2a', bg:'#2a1510', atkMod:0,  defMod:1, shellMult:1.5, icon:'^'},
+  deep:   {name:'Open Ocean',   color:'#1a3a8a', bg:'#080e22', atkMod:-1, defMod:0, shellMult:1,   icon:'\u2248'},
+  coral:  {name:'Living Reef',  color:'#b83a8a', bg:'#200e1a', atkMod:0,  defMod:0, shellMult:2,   icon:'*'},
+  crown:  {name:'Maelstrom',    color:'#ddc020', bg:'#2a2510', atkMod:0,  defMod:0, shellMult:3,   icon:'\u2655'},
+  ice:    {name:'Frozen Sea',   color:'#88ccee', bg:'#0e1a22', atkMod:-1, defMod:1, shellMult:1.5, icon:'\u2744'},
+  volcanic:{name:'Volcanic Vent',color:'#ff6622',bg:'#2a1008', atkMod:1,  defMod:-1,shellMult:2,   icon:'\u2666'},
 };
 
 const REGIONS = {
-  tidal:  {name:'Tidal Flats',   bonus:2, spots:10},
-  reef:   {name:'Reef Ridge',    bonus:3, spots:8 },
-  abyss:  {name:'Abyss',        bonus:5, spots:6 },
-  coral:  {name:'Coral Gardens', bonus:3, spots:12},
-  crown:  {name:'Crown',        bonus:7, spots:4 },
-  kelp:   {name:'Kelp Forest',  bonus:3, spots:10},
-  shore:  {name:'Shore Line',   bonus:2, spots:10},
-  trench: {name:'Trench',       bonus:4, spots:8 },
+  pacific:  {name:'Pacific Basin',   bonus:2, spots:10, ocean:'Pacific',     terrainColor:'#1a5588'},
+  atlantic: {name:'Atlantic Ridge',  bonus:3, spots:8,  ocean:'Atlantic',    terrainColor:'#2244aa'},
+  indian:   {name:'Indian Depths',   bonus:5, spots:6,  ocean:'Indian',      terrainColor:'#883388'},
+  arctic:   {name:'Arctic Circle',   bonus:3, spots:12, ocean:'Arctic',      terrainColor:'#4488aa'},
+  crown:    {name:'The Maelstrom',   bonus:7, spots:4,  ocean:'Maelstrom',   terrainColor:'#aa8822'},
+  southern: {name:'Southern Deep',   bonus:3, spots:10, ocean:'Southern',    terrainColor:'#226688'},
+  coral_sea:{name:'Coral Sea',       bonus:2, spots:10, ocean:'Coral Sea',   terrainColor:'#cc5544'},
+  mariana:  {name:'Mariana Trench',  bonus:4, spots:8,  ocean:'Mariana',     terrainColor:'#112244'},
 };
 
+// Region map: P=pacific A=atlantic I=indian R=arctic $=crown S=southern C=coral_sea M=mariana
 const REGION_MAP_STR = [
-  'TTT...RR..','TTTT.RRR..','TT...RRR.A','.CCC....AA',
-  '.CCCC$$KKA','.CCC.$$KKA','..CC..KKKK','SS..HHH.KK',
-  'SSSSHHHH..','SSSS.HH...',
+  'PPP...AA..','PPPP.AAA..','PP...AAA.I','.RRRR...II',
+  '.RRRR$$SSI','.RRR.$$SSI','..RR..SSSS','CC..MMM.SS',
+  'CCCCMMMM..','CCCC.MM...',
 ];
-const REGION_CHAR = {T:'tidal',R:'reef',A:'abyss',C:'coral',$:'crown',K:'kelp',S:'shore',H:'trench'};
+const REGION_CHAR = {P:'pacific',A:'atlantic',I:'indian',R:'arctic',$:'crown',S:'southern',C:'coral_sea',M:'mariana'};
+
+// Terrain map: s=shore r=reef d=deep c=coral *=crown i=ice v=volcanic
 const TERRAIN_MAP_STR = [
-  'ssss..rr..','ssss.rrr..','ss...rrr.d','.ccc....dd',
-  '.cccc**kkd','.ccc.**kkd','..cc..kkkk','ss..ddd.kk',
-  'ssssdddd..','ssss.dd...',
+  'sssd..rr..','ssss.rrr..','sd...rrr.d','.iiic...dd',
+  '.iiic**ssd','.iii.**ssd','..ic..ssss','rr..ddd.ss',
+  'rrrrddvv..','rrrr.dv...',
 ];
-const TERRAIN_CHAR = {s:'shore',r:'reef',d:'deep',c:'coral','*':'crown',k:'deep','.':'shore'};
+const TERRAIN_CHAR = {s:'shore',r:'reef',d:'deep',c:'coral','*':'crown',i:'ice',v:'volcanic','.':'shore'};
+
+// (old region/terrain maps removed — replaced above)
 
 // === GRID DATA ===
 const cells = [];
@@ -414,6 +435,9 @@ const game = {
   firstGame: true,
   // Lobby
   lobby: null, // { tier, players:[], maxPlayers:4, timer:0, gameId }
+  // Species per player slot (0-3)
+  playerSpecies: ['crab','octopus','lobster','shark'],
+  selectedSpecies: 'crab',
   // Audio
   muted: false,
 };
@@ -686,7 +710,7 @@ function aiDeployReinforcements(p){
   while(n>0&&tgts.length){tgts[Math.floor(Math.random()*tgts.length)].troops++;n--;}
   game.reinforcements[p]=0;
 }
-// AI personalities: 1=aggressive(Red), 2=defensive(Blue), 3=expansionist(Gold)
+// AI personalities: 1=Storm Kraken(aggressive), 2=Reef Lobster(defensive), 3=Abyss Hunter(expansionist)
 const AI_STYLE = { 1: 'aggressive', 2: 'defensive', 3: 'expansionist' };
 
 function aiTurn(p){
@@ -804,6 +828,19 @@ function handleTap(sx,sy){
       if(px>=hb.x&&px<=hb.x+hb.w&&py>=hb.y&&py<=hb.y+hb.h){
         if(typeof openHelp==='function') openHelp();
         return;
+      }
+    }
+    // Species selection
+    if (game._speciesRects) {
+      for (const sr of game._speciesRects) {
+        if (px >= sr.x && px <= sr.x + sr.w && py >= sr.y && py <= sr.y + sr.h) {
+          game.selectedSpecies = sr.species;
+          game.playerSpecies[0] = sr.species;
+          // Update player color to match species
+          PLAYER_COLORS[0] = SPECIES[sr.species].color;
+          haptic('light');
+          return; // don't start game, just select
+        }
       }
     }
     // Check if tapped a specific arena tier button
@@ -1202,8 +1239,8 @@ function drawGrid() {
     const cy = gridOffsetY + cell.row * cellSize + cellSize / 2;
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = TERRAIN[cell.terrain].color;
-    const icons = { shore: '~', reef: '^', deep: '=', coral: '*', crown: '+' };
-    ctx.fillText(icons[cell.terrain] || '~', cx, cy);
+    const t = TERRAIN[cell.terrain];
+    ctx.fillText(t.icon || '~', cx, cy);
     ctx.globalAlpha = 1;
   }
   ctx.textBaseline = 'alphabetic';
@@ -1239,9 +1276,11 @@ function drawDeployHighlights() {
 }
 
 // === CRAB DRAWING ===
-function drawCrab(cx, cy, size, color, troops, time) {
+// === CREATURE DRAWING ===
+// Each species has a unique look. species: 'crab','octopus','lobster','turtle','jellyfish','shark'
+function drawCreature(cx, cy, size, color, troops, time, species) {
   const s = size;
-  const legWiggle = Math.sin(time * 6) * 0.15;
+  const sp = species || 'crab';
 
   // Shadow
   ctx.globalAlpha = 0.2;
@@ -1251,93 +1290,12 @@ function drawCrab(cx, cy, size, color, troops, time) {
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  // Legs (3 per side)
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(1.5, s * 0.08);
-  ctx.lineCap = 'round';
-  for (let side = -1; side <= 1; side += 2) {
-    for (let leg = 0; leg < 3; leg++) {
-      const baseX = cx + side * s * 0.35;
-      const baseY = cy + (leg - 1) * s * 0.25;
-      const midX = baseX + side * s * 0.5;
-      const midY = baseY + Math.sin(time * 5 + leg + side) * s * 0.12;
-      const tipX = midX + side * s * 0.25;
-      const tipY = midY + s * 0.2 + legWiggle * s * (leg === 1 ? -1 : 1);
-      ctx.beginPath();
-      ctx.moveTo(baseX, baseY);
-      ctx.quadraticCurveTo(midX, midY, tipX, tipY);
-      ctx.stroke();
-    }
-  }
-
-  // Claws
-  const clawOpenL = 0.2 + Math.sin(time * 3) * 0.05;
-  const clawOpenR = 0.2 + Math.sin(time * 3 + 1) * 0.05;
-  // Left claw
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(cx - s * 0.75, cy - s * 0.15, s * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = darkenColor(color, 0.7);
-  ctx.beginPath();
-  ctx.arc(cx - s * 0.75 - s * 0.08, cy - s * 0.15 - s * clawOpenL, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx - s * 0.75 + s * 0.08, cy - s * 0.15 + s * clawOpenL, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  // Right claw
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(cx + s * 0.75, cy - s * 0.15, s * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = darkenColor(color, 0.7);
-  ctx.beginPath();
-  ctx.arc(cx + s * 0.75 - s * 0.08, cy - s * 0.15 - s * clawOpenR, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(cx + s * 0.75 + s * 0.08, cy - s * 0.15 + s * clawOpenR, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Body shell
-  const bodyGrad = ctx.createRadialGradient(cx - s * 0.1, cy - s * 0.1, 0, cx, cy, s * 0.5);
-  bodyGrad.addColorStop(0, lightenColor(color, 1.3));
-  bodyGrad.addColorStop(0.6, color);
-  bodyGrad.addColorStop(1, darkenColor(color, 0.6));
-  ctx.fillStyle = bodyGrad;
-  ctx.beginPath();
-  ctx.ellipse(cx, cy, s * 0.5, s * 0.38, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Shell pattern (arc lines)
-  ctx.strokeStyle = darkenColor(color, 0.5);
-  ctx.lineWidth = Math.max(1, s * 0.04);
-  ctx.globalAlpha = 0.3;
-  for (let i = 1; i <= 2; i++) {
-    ctx.beginPath();
-    ctx.arc(cx, cy - s * 0.05, s * 0.15 * i, Math.PI * 0.8, Math.PI * 2.2);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  // Eye stalks
-  const eyeY = cy - s * 0.32;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = Math.max(1.5, s * 0.06);
-  ctx.beginPath(); ctx.moveTo(cx - s * 0.15, cy - s * 0.25); ctx.lineTo(cx - s * 0.2, eyeY); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx + s * 0.15, cy - s * 0.25); ctx.lineTo(cx + s * 0.2, eyeY); ctx.stroke();
-
-  // Eyes
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(cx - s * 0.2, eyeY, s * 0.1, 0, Math.PI * 2);
-  ctx.arc(cx + s * 0.2, eyeY, s * 0.1, 0, Math.PI * 2);
-  ctx.fill();
-  // Pupils (look toward center of grid)
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(cx - s * 0.18, eyeY + s * 0.01, s * 0.05, 0, Math.PI * 2);
-  ctx.arc(cx + s * 0.18, eyeY + s * 0.01, s * 0.05, 0, Math.PI * 2);
-  ctx.fill();
+  if (sp === 'octopus') drawOctopus(cx, cy, s, color, time);
+  else if (sp === 'lobster') drawLobster(cx, cy, s, color, time);
+  else if (sp === 'turtle') drawTurtle(cx, cy, s, color, time);
+  else if (sp === 'jellyfish') drawJellyfish(cx, cy, s, color, time);
+  else if (sp === 'shark') drawShark(cx, cy, s, color, time);
+  else drawCrabBody(cx, cy, s, color, time);
 
   // Troop count badge
   if (troops > 0) {
@@ -1345,23 +1303,224 @@ function drawCrab(cx, cy, size, color, troops, time) {
     const fs = Math.max(10 * devicePixelRatio, s * 0.42);
     const badgeW = fs * (troops >= 10 ? 1.4 : 1) + 6;
     const badgeH = fs + 4;
-
-    // Badge background
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    roundRect(ctx, cx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4);
-    ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, cx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4);
-    ctx.stroke();
-
+    roundRect(ctx, cx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4); ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    roundRect(ctx, cx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4); ctx.stroke();
     ctx.font = `bold ${fs}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff';
     ctx.fillText(troops, cx, badgeY);
     ctx.textBaseline = 'alphabetic';
   }
+}
+
+// Keep backward compat
+function drawCrab(cx, cy, size, color, troops, time) {
+  drawCreature(cx, cy, size, color, troops, time, 'crab');
+}
+
+function drawCrabBody(cx, cy, s, color, time) {
+  const legWiggle = Math.sin(time * 6) * 0.15;
+  // Legs
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.5, s * 0.08); ctx.lineCap = 'round';
+  for (let side = -1; side <= 1; side += 2) {
+    for (let leg = 0; leg < 3; leg++) {
+      const bx = cx + side * s * 0.35, by = cy + (leg - 1) * s * 0.25;
+      const mx = bx + side * s * 0.5, my = by + Math.sin(time * 5 + leg + side) * s * 0.12;
+      const tx = mx + side * s * 0.25, ty = my + s * 0.2 + legWiggle * s * (leg === 1 ? -1 : 1);
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(mx, my, tx, ty); ctx.stroke();
+    }
+  }
+  // Claws
+  const cl = 0.2 + Math.sin(time * 3) * 0.05;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(cx - s * 0.75, cy - s * 0.15, s * 0.22, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + s * 0.75, cy - s * 0.15, s * 0.22, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = darkenColor(color, 0.7);
+  ctx.beginPath(); ctx.arc(cx - s * 0.82, cy - s * 0.15 - s * cl, s * 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + s * 0.82, cy - s * 0.15 - s * cl, s * 0.1, 0, Math.PI * 2); ctx.fill();
+  // Body
+  const bg = ctx.createRadialGradient(cx - s * 0.1, cy - s * 0.1, 0, cx, cy, s * 0.5);
+  bg.addColorStop(0, lightenColor(color, 1.3)); bg.addColorStop(0.6, color); bg.addColorStop(1, darkenColor(color, 0.6));
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(cx, cy, s * 0.5, s * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+  // Shell lines
+  ctx.strokeStyle = darkenColor(color, 0.5); ctx.lineWidth = Math.max(1, s * 0.04); ctx.globalAlpha = 0.3;
+  for (let i = 1; i <= 2; i++) { ctx.beginPath(); ctx.arc(cx, cy - s * 0.05, s * 0.15 * i, Math.PI * 0.8, Math.PI * 2.2); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // Eyes
+  drawEyes(cx, cy, s, color, 0.2, -0.32);
+}
+
+function drawOctopus(cx, cy, s, color, time) {
+  // Tentacles (8 wavy arms)
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, s * 0.07); ctx.lineCap = 'round';
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2 - Math.PI * 0.5;
+    const tx = cx + Math.cos(angle) * s * 0.3;
+    const ty = cy + Math.sin(angle) * s * 0.2 + s * 0.1;
+    const ex = cx + Math.cos(angle) * s * 0.8;
+    const ey = cy + Math.sin(angle) * s * 0.5 + s * 0.15 + Math.sin(time * 3 + i) * s * 0.1;
+    const mx = (tx + ex) / 2 + Math.sin(time * 4 + i * 0.8) * s * 0.15;
+    const my = (ty + ey) / 2;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo(mx, my, ex, ey); ctx.stroke();
+    // Suction cups
+    ctx.fillStyle = darkenColor(color, 0.5);
+    ctx.beginPath(); ctx.arc(mx, my, s * 0.03, 0, Math.PI * 2); ctx.fill();
+  }
+  // Body (dome)
+  const bg = ctx.createRadialGradient(cx, cy - s * 0.1, 0, cx, cy, s * 0.45);
+  bg.addColorStop(0, lightenColor(color, 1.4)); bg.addColorStop(0.6, color); bg.addColorStop(1, darkenColor(color, 0.5));
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(cx, cy - s * 0.05, s * 0.4, s * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+  // Spots
+  ctx.globalAlpha = 0.2; ctx.fillStyle = lightenColor(color, 1.5);
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(cx + Math.cos(i * 1.5) * s * 0.15, cy - s * 0.05 + Math.sin(i * 1.5) * s * 0.15, s * 0.06, 0, Math.PI * 2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+  // Eyes (big, expressive)
+  drawEyes(cx, cy, s, color, 0.18, -0.15, 0.14, 0.07);
+}
+
+function drawLobster(cx, cy, s, color, time) {
+  // Tail segments
+  ctx.fillStyle = darkenColor(color, 0.8);
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath(); ctx.ellipse(cx, cy + s * (0.2 + i * 0.15), s * (0.3 - i * 0.05), s * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // Tail fan
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(cx, cy + s * 0.55); ctx.lineTo(cx - s * 0.25, cy + s * 0.75); ctx.lineTo(cx + s * 0.25, cy + s * 0.75); ctx.fill();
+  // Antennae
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, s * 0.04);
+  const aw = Math.sin(time * 2) * s * 0.1;
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.1, cy - s * 0.3); ctx.quadraticCurveTo(cx - s * 0.5 + aw, cy - s * 0.7, cx - s * 0.7, cy - s * 0.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + s * 0.1, cy - s * 0.3); ctx.quadraticCurveTo(cx + s * 0.5 - aw, cy - s * 0.7, cx + s * 0.7, cy - s * 0.5); ctx.stroke();
+  // Big claws on long arms
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, s * 0.06);
+  const clawAng = Math.sin(time * 2.5) * 0.1;
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.3, cy); ctx.lineTo(cx - s * 0.7, cy - s * 0.2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + s * 0.3, cy); ctx.lineTo(cx + s * 0.7, cy - s * 0.2); ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(cx - s * 0.7, cy - s * 0.2, s * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + s * 0.7, cy - s * 0.2, s * 0.18, 0, Math.PI * 2); ctx.fill();
+  // Pincers
+  ctx.fillStyle = darkenColor(color, 0.6);
+  ctx.beginPath(); ctx.arc(cx - s * 0.78, cy - s * 0.3 - clawAng * s, s * 0.08, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + s * 0.78, cy - s * 0.3 + clawAng * s, s * 0.08, 0, Math.PI * 2); ctx.fill();
+  // Body
+  const bg = ctx.createRadialGradient(cx, cy - s * 0.1, 0, cx, cy, s * 0.35);
+  bg.addColorStop(0, lightenColor(color, 1.2)); bg.addColorStop(1, darkenColor(color, 0.7));
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(cx, cy - s * 0.05, s * 0.35, s * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+  // Eyes on stalks
+  drawEyes(cx, cy, s, color, 0.15, -0.35);
+}
+
+function drawTurtle(cx, cy, s, color, time) {
+  // Flippers
+  ctx.fillStyle = darkenColor(color, 0.7);
+  const flipAng = Math.sin(time * 3) * 0.2;
+  for (let side = -1; side <= 1; side += 2) {
+    ctx.save(); ctx.translate(cx + side * s * 0.35, cy + s * 0.1); ctx.rotate(side * (0.5 + flipAng));
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.35, s * 0.12, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    // Back flippers
+    ctx.save(); ctx.translate(cx + side * s * 0.25, cy + s * 0.35); ctx.rotate(side * (0.8 - flipAng * 0.5));
+    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.2, s * 0.08, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  // Shell (hexagonal pattern)
+  const bg = ctx.createRadialGradient(cx - s * 0.08, cy - s * 0.08, 0, cx, cy, s * 0.5);
+  bg.addColorStop(0, lightenColor(color, 1.3)); bg.addColorStop(0.5, color); bg.addColorStop(1, darkenColor(color, 0.5));
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(cx, cy, s * 0.5, s * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+  // Shell pattern (hexagons)
+  ctx.strokeStyle = darkenColor(color, 0.4); ctx.lineWidth = Math.max(1, s * 0.03); ctx.globalAlpha = 0.4;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * s * 0.35, cy + Math.sin(a) * s * 0.3); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.ellipse(cx, cy, s * 0.2, s * 0.17, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 1;
+  // Head
+  ctx.fillStyle = darkenColor(color, 0.8);
+  ctx.beginPath(); ctx.ellipse(cx, cy - s * 0.4, s * 0.15, s * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+  // Eyes
+  drawEyes(cx, cy, s, color, 0.1, -0.42, 0.06, 0.03);
+}
+
+function drawJellyfish(cx, cy, s, color, time) {
+  const bob = Math.sin(time * 2) * s * 0.08;
+  const jy = cy + bob;
+  // Trailing tentacles
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, s * 0.03); ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 7; i++) {
+    const tx = cx + (i - 3) * s * 0.12;
+    const len = s * (0.5 + Math.sin(time + i) * 0.15);
+    ctx.beginPath(); ctx.moveTo(tx, jy + s * 0.2);
+    ctx.quadraticCurveTo(tx + Math.sin(time * 3 + i) * s * 0.1, jy + s * 0.2 + len * 0.5, tx + Math.sin(time * 2 + i * 0.7) * s * 0.15, jy + s * 0.2 + len);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // Bell (translucent dome)
+  ctx.globalAlpha = 0.7;
+  const bg = ctx.createRadialGradient(cx, jy - s * 0.1, 0, cx, jy, s * 0.45);
+  bg.addColorStop(0, lightenColor(color, 1.5)); bg.addColorStop(0.5, color); bg.addColorStop(1, darkenColor(color, 0.6) + '88');
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.ellipse(cx, jy - s * 0.05, s * 0.4, s * 0.35, 0, Math.PI, Math.PI * 2); ctx.fill();
+  // Bottom rim
+  ctx.fillStyle = darkenColor(color, 0.7);
+  ctx.beginPath(); ctx.ellipse(cx, jy + s * 0.15, s * 0.4, s * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // Glow spots
+  ctx.globalAlpha = 0.3 + Math.sin(time * 4) * 0.15; ctx.fillStyle = lightenColor(color, 1.8);
+  ctx.beginPath(); ctx.arc(cx - s * 0.1, jy - s * 0.1, s * 0.06, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + s * 0.12, jy - s * 0.05, s * 0.05, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // Eyes (cute small ones)
+  drawEyes(cx, cy + bob, s, color, 0.12, -0.1, 0.06, 0.03);
+}
+
+function drawShark(cx, cy, s, color, time) {
+  const sw = Math.sin(time * 4) * s * 0.04; // tail sway
+  // Tail fin
+  ctx.fillStyle = darkenColor(color, 0.7);
+  ctx.beginPath(); ctx.moveTo(cx + s * 0.5 + sw, cy); ctx.lineTo(cx + s * 0.85 + sw * 2, cy - s * 0.25);
+  ctx.lineTo(cx + s * 0.85 + sw * 2, cy + s * 0.2); ctx.fill();
+  // Body (streamlined)
+  const bg = ctx.createLinearGradient(cx - s * 0.5, cy - s * 0.3, cx - s * 0.5, cy + s * 0.3);
+  bg.addColorStop(0, darkenColor(color, 0.6)); bg.addColorStop(0.4, color); bg.addColorStop(1, lightenColor(color, 1.2));
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.ellipse(cx, cy, s * 0.55, s * 0.25, 0, 0, Math.PI * 2); ctx.fill();
+  // Dorsal fin
+  ctx.fillStyle = darkenColor(color, 0.5);
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.05, cy - s * 0.25); ctx.lineTo(cx + s * 0.1, cy - s * 0.55);
+  ctx.lineTo(cx + s * 0.2, cy - s * 0.25); ctx.fill();
+  // Pectoral fins
+  ctx.fillStyle = darkenColor(color, 0.6);
+  for (let side = -1; side <= 1; side += 2) {
+    ctx.beginPath(); ctx.moveTo(cx - s * 0.15, cy + s * 0.15 * side);
+    ctx.lineTo(cx - s * 0.35, cy + s * 0.35 * side);
+    ctx.lineTo(cx + s * 0.05, cy + s * 0.2 * side); ctx.fill();
+  }
+  // Mouth line
+  ctx.strokeStyle = darkenColor(color, 0.3); ctx.lineWidth = Math.max(1, s * 0.03);
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.45, cy + s * 0.05); ctx.lineTo(cx - s * 0.3, cy + s * 0.1); ctx.stroke();
+  // Eye (single visible — side view)
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(cx - s * 0.35, cy - s * 0.08, s * 0.07, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(cx - s * 0.36, cy - s * 0.07, s * 0.035, 0, Math.PI * 2); ctx.fill();
+  // Gill slits
+  ctx.strokeStyle = darkenColor(color, 0.4); ctx.lineWidth = Math.max(1, s * 0.02); ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(cx - s * 0.2 + i * s * 0.06, cy - s * 0.1); ctx.lineTo(cx - s * 0.2 + i * s * 0.06, cy + s * 0.08); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+}
+
+function drawEyes(cx, cy, s, color, xOff, yOff, eyeR, pupilR) {
+  const er = eyeR || 0.1, pr = pupilR || 0.05;
+  const ey = cy + s * (yOff || -0.32);
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.5, s * 0.06);
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.15, cy + s * (yOff + 0.07)); ctx.lineTo(cx - s * xOff, ey); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + s * 0.15, cy + s * (yOff + 0.07)); ctx.lineTo(cx + s * xOff, ey); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.beginPath();
+  ctx.arc(cx - s * xOff, ey, s * er, 0, Math.PI * 2); ctx.arc(cx + s * xOff, ey, s * er, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#111'; ctx.beginPath();
+  ctx.arc(cx - s * (xOff - 0.02), ey + s * 0.01, s * pr, 0, Math.PI * 2);
+  ctx.arc(cx + s * (xOff - 0.02), ey + s * 0.01, s * pr, 0, Math.PI * 2); ctx.fill();
 }
 
 function parseHex(hex) {
@@ -1398,7 +1557,8 @@ function drawTroops() {
       ctx.globalAlpha = 1;
     }
 
-    drawCrab(pos.x, pos.y - size * 0.1, size, color, cell.troops, game.time + cell.seed);
+    const sp = cell.owner >= 0 ? (game.playerSpecies[cell.owner] || 'crab') : 'crab';
+    drawCreature(pos.x, pos.y - size * 0.1, size, color, cell.troops, game.time + cell.seed, sp);
   }
 }
 
@@ -2356,16 +2516,55 @@ function drawTitle() {
   ctx.fillText('ARENA', W / 2, H * 0.22 + ts * 1.1);
   ctx.shadowBlur = 0;
 
-  // Big crab
-  drawCrab(W / 2, H * 0.42, Math.min(W, H) * 0.09, '#00ff88', 0, game.time);
+  // Character roster — show all 6 species in a row
+  const rosterY = H * 0.38;
+  const creatureSize = Math.min(W, H) * 0.045;
+  const rosterGap = Math.min(W / 7, 60 * dpr);
+  const rosterStartX = W / 2 - (SPECIES_LIST.length - 1) * rosterGap / 2;
+  game._speciesRects = [];
 
-  // How to play
-  ctx.font = `${Math.max(12 * dpr, 13)}px monospace`;
-  const howY = H * 0.54;
-  [['Deploy troops on your spots','#aaa'],
-   ['Select your spot \u2192 tap enemy to attack','#ff8888'],
-   ['Capture 60 spots to win ETH!','#ffdd00']
-  ].forEach(([l,c],i) => { ctx.fillStyle = c; ctx.fillText(l, W / 2, howY + i * 20 * dpr); });
+  for (let i = 0; i < SPECIES_LIST.length; i++) {
+    const sp = SPECIES_LIST[i];
+    const info = SPECIES[sp];
+    const sx = rosterStartX + i * rosterGap;
+    const selected = game.selectedSpecies === sp;
+
+    // Selection ring
+    if (selected) {
+      ctx.strokeStyle = info.color;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = info.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(sx, rosterY, creatureSize * 1.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // Draw creature
+    drawCreature(sx, rosterY, selected ? creatureSize * 1.2 : creatureSize * 0.9, info.color, 0, game.time + i, sp);
+
+    // Name below
+    ctx.fillStyle = selected ? info.color : '#555';
+    ctx.font = `${selected ? 'bold ' : ''}${Math.max(7 * dpr, 8)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(info.name.split(' ').pop(), sx, rosterY + creatureSize * 2);
+
+    game._speciesRects.push({ x: sx - creatureSize * 1.2, y: rosterY - creatureSize * 1.5, w: creatureSize * 2.4, h: creatureSize * 3.5, species: sp });
+  }
+
+  // Selected species info
+  const selInfo = SPECIES[game.selectedSpecies];
+  ctx.fillStyle = selInfo.color;
+  ctx.font = `bold ${Math.max(13 * dpr, 14)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(selInfo.name, W / 2, H * 0.52);
+  ctx.fillStyle = '#888';
+  ctx.font = `${Math.max(10 * dpr, 11)}px monospace`;
+  ctx.fillText(selInfo.passive, W / 2, H * 0.56);
+
+  // How to play (condensed)
+  ctx.fillStyle = '#555';
+  ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
+  ctx.fillText('Conquer 60 spots across 8 oceans \u2022 RISK dice combat \u2022 Win ETH', W / 2, H * 0.61);
 
   // Stats bar
   ctx.fillStyle = 'rgba(6,6,20,0.8)';
