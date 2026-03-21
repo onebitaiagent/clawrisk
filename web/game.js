@@ -727,6 +727,14 @@ function handleTap(sx,sy){
         return;
       }
     }
+    // Help/FAQ button
+    if(game._helpBtnRect){
+      const hb=game._helpBtnRect;
+      if(px>=hb.x&&px<=hb.x+hb.w&&py>=hb.y&&py<=hb.y+hb.h){
+        if(typeof openHelp==='function') openHelp();
+        return;
+      }
+    }
     // Check if tapped a specific arena tier button
     const tier = hitTierButton(px, py);
     if (tier) {
@@ -753,9 +761,14 @@ function handleTap(sx,sy){
   if(game._muteRect){
     const mr=game._muteRect;
     if(px>=mr.x&&px<=mr.x+mr.w&&py>=mr.y&&py<=mr.y+mr.h){
-      game.muted=!game.muted;
-      haptic('light');
-      return;
+      game.muted=!game.muted;haptic('light');return;
+    }
+  }
+  // In-game help button
+  if(game._helpBtnRect2){
+    const hb=game._helpBtnRect2;
+    if(px>=hb.x&&px<=hb.x+hb.w&&py>=hb.y&&py<=hb.y+hb.h){
+      if(typeof openHelp==='function') openHelp();return;
     }
   }
   if(handleHUDTap(sx,sy))return;
@@ -1681,6 +1694,15 @@ function drawHUD() {
   ctx.fillText(game.muted ? '\u2715' : '\u266B', muteX + muteSize/2, muteY + muteSize*0.62);
   // Store rect for tap detection
   game._muteRect = { x: muteX, y: muteY, w: muteSize, h: muteSize };
+
+  // Help button (next to mute)
+  const helpX = muteX - muteSize - 6 * dpr;
+  ctx.fillStyle = 'rgba(20,20,40,0.7)';
+  ctx.beginPath(); ctx.arc(helpX + muteSize/2, muteY + muteSize/2, muteSize/2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#4488ff';
+  ctx.font = `bold ${Math.max(13*dpr,14)}px monospace`;
+  ctx.fillText('?', helpX + muteSize/2, muteY + muteSize*0.62);
+  game._helpBtnRect2 = { x: helpX, y: muteY, w: muteSize, h: muteSize };
 }
 
 function drawHintBar() {
@@ -2256,19 +2278,33 @@ function drawTitle() {
     ctx.fillText(t, W * 0.08 + (i + 0.5) * (W * 0.84 / 3), stY + 20 * dpr);
   });
 
-  // Wallet button (small, top-right)
-  const wbW = 90 * dpr, wbH = 28 * dpr;
-  const wbX = W - wbW - 12 * dpr, wbY = stY - 36 * dpr;
+  // Top-right icon buttons (wallet + help)
+  const iconSize = 36 * dpr;
+  const iconGap = 8 * dpr;
+  const iconY = 12 * dpr;
+
+  // Wallet button
+  const wbX = W - iconSize * 2 - iconGap - 12 * dpr;
   ctx.fillStyle = '#0c0c1a';
-  roundRect(ctx, wbX, wbY, wbW, wbH, 6); ctx.fill();
+  roundRect(ctx, wbX, iconY, iconSize, iconSize, 8); ctx.fill();
   ctx.strokeStyle = '#ffcc0066'; ctx.lineWidth = 1;
-  roundRect(ctx, wbX, wbY, wbW, wbH, 6); ctx.stroke();
+  roundRect(ctx, wbX, iconY, iconSize, iconSize, 8); ctx.stroke();
   ctx.fillStyle = '#ffcc00';
-  ctx.font = `bold ${Math.max(10 * dpr, 11)}px monospace`;
+  ctx.font = `${Math.max(16 * dpr, 17)}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('\u{1F4B0} WALLET', wbX + wbW / 2, wbY + wbH * 0.65);
-  // Store for tap detection
-  game._walletBtnRect = { x: wbX, y: wbY, w: wbW, h: wbH };
+  ctx.fillText('\u{1F4B0}', wbX + iconSize / 2, iconY + iconSize * 0.65);
+  game._walletBtnRect = { x: wbX, y: iconY, w: iconSize, h: iconSize };
+
+  // Help/FAQ button
+  const hbX = W - iconSize - 12 * dpr;
+  ctx.fillStyle = '#0c0c1a';
+  roundRect(ctx, hbX, iconY, iconSize, iconSize, 8); ctx.fill();
+  ctx.strokeStyle = '#4488ff66'; ctx.lineWidth = 1;
+  roundRect(ctx, hbX, iconY, iconSize, iconSize, 8); ctx.stroke();
+  ctx.fillStyle = '#4488ff';
+  ctx.font = `bold ${Math.max(18 * dpr, 19)}px monospace`;
+  ctx.fillText('?', hbX + iconSize / 2, iconY + iconSize * 0.65);
+  game._helpBtnRect = { x: hbX, y: iconY, w: iconSize, h: iconSize };
 
   // Free Play button (big, centered)
   const playBtnW = Math.min(240 * dpr, W * 0.6);

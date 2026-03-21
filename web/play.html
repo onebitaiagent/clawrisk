@@ -32,6 +32,24 @@
 .wallet-tabs{display:flex;gap:0;margin-bottom:16px;width:100%;max-width:380px}
 .wallet-tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:bold;cursor:pointer;border-bottom:2px solid #222;color:#666}
 .wallet-tab.active{border-color:#00ff88;color:#00ff88}
+
+.help-overlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(4,4,16,.95);padding:16px;overflow-y:auto;font-family:'Courier New',monospace;color:#ccc}
+.help-overlay.show{display:block}
+.help-close{position:fixed;top:12px;right:16px;color:#666;font-size:24px;cursor:pointer;z-index:1001}
+.help-content{max-width:420px;margin:40px auto 20px;padding-bottom:40px}
+.help-h1{color:#ffdd00;font-size:20px;font-weight:bold;margin-bottom:16px;text-align:center}
+.help-section{margin-bottom:20px}
+.help-h2{color:#00ff88;font-size:14px;font-weight:bold;margin-bottom:8px;border-bottom:1px solid #1a1a30;padding-bottom:4px}
+.help-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #0c0c1a}
+.help-row .label{color:#aaa}
+.help-row .value{color:#fff;font-weight:bold;text-align:right}
+.help-row .value.gold{color:#ffcc00}
+.help-row .value.green{color:#00ff88}
+.help-row .value.blue{color:#4488ff}
+.help-row .value.red{color:#ff4444}
+.help-p{font-size:12px;color:#999;line-height:1.6;margin-bottom:8px}
+.help-tip{background:#0c1a1c;border:1px solid #1a3a2a;border-radius:8px;padding:10px;font-size:11px;color:#aaa;margin-top:8px}
+.help-tip b{color:#00ff88}
 </style>
 </head>
 <body>
@@ -79,6 +97,81 @@
   </div>
 </div>
 
+<!-- Help/FAQ Overlay -->
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-close" onclick="closeHelp()">&times;</div>
+  <div class="help-content">
+    <div class="help-h1">HOW TO PLAY</div>
+
+    <div class="help-section">
+      <div class="help-h2">BASICS</div>
+      <div class="help-p">Conquer a 10x10 ocean grid by deploying crab troops, attacking enemies, and capturing territory. First to hold <b style="color:#ffdd00">60 spots</b> wins!</div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-h2">COMBAT (RISK DICE)</div>
+      <div class="help-p">When you attack, both sides roll dice (1-6). Highest dice are compared pair by pair. Higher roll wins — loser removes 1 troop. <b style="color:#ff6666">Ties go to the defender.</b></div>
+      <div class="help-row"><span class="label">Attacker dice</span><span class="value">Up to 3 (must leave 1 behind)</span></div>
+      <div class="help-row"><span class="label">Defender dice</span><span class="value">Up to 2</span></div>
+      <div class="help-row"><span class="label">QTE bonus</span><span class="value green">Tap in sweet spot = +1 to best die</span></div>
+      <div class="help-tip"><b>Tip:</b> Attack with 3+ troops for 3 dice. Defending with 2 troops gives you 2 dice. Numbers matter!</div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-h2">TERRAIN EFFECTS</div>
+      <div class="help-row"><span class="label">Shore ~</span><span class="value">Neutral — 1x shells</span></div>
+      <div class="help-row"><span class="label">Reef ^</span><span class="value green">Defender +1 — 1.5x shells</span></div>
+      <div class="help-row"><span class="label">Deep Water =</span><span class="value blue">Attacker -1 — 1x shells</span></div>
+      <div class="help-row"><span class="label">Coral *</span><span class="value" style="color:#cc44aa">+1 def per adj coral — 2x shells</span></div>
+      <div class="help-row"><span class="label">Crown +</span><span class="value gold">No combat bonus — 3x shells</span></div>
+      <div class="help-tip"><b>Tip:</b> Reef and coral spots are much easier to defend. Deep water is hard to invade.</div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-h2">SHELL ECONOMY</div>
+      <div class="help-p">Every <b style="color:#fff">10 seconds</b>, each spot you hold generates shells based on terrain.</div>
+      <div class="help-row"><span class="label">Buy 1 troop</span><span class="value gold">10 shells</span></div>
+      <div class="help-row"><span class="label">Shore spot</span><span class="value">1 shell / 10s</span></div>
+      <div class="help-row"><span class="label">Reef spot</span><span class="value">1.5 shells / 10s</span></div>
+      <div class="help-row"><span class="label">Coral spot</span><span class="value">2 shells / 10s</span></div>
+      <div class="help-row"><span class="label">Crown spot</span><span class="value gold">3 shells / 10s</span></div>
+      <div class="help-row"><span class="label">Full region bonus</span><span class="value green">2x shells for that region</span></div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-h2">REINFORCEMENTS</div>
+      <div class="help-p">Every <b style="color:#fff">30 seconds</b>, you get free troops based on territory held.</div>
+      <div class="help-row"><span class="label">Base troops</span><span class="value">floor(spots / 3), min 3</span></div>
+      <div class="help-row"><span class="label">Tidal Flats (10 spots)</span><span class="value green">+2 troops</span></div>
+      <div class="help-row"><span class="label">Shore Line (10 spots)</span><span class="value green">+2 troops</span></div>
+      <div class="help-row"><span class="label">Reef Ridge (8 spots)</span><span class="value green">+3 troops</span></div>
+      <div class="help-row"><span class="label">Coral Gardens (12 spots)</span><span class="value green">+3 troops</span></div>
+      <div class="help-row"><span class="label">Kelp Forest (10 spots)</span><span class="value green">+3 troops</span></div>
+      <div class="help-row"><span class="label">Trench (8 spots)</span><span class="value green">+4 troops</span></div>
+      <div class="help-row"><span class="label">Abyss (6 spots)</span><span class="value green">+5 troops</span></div>
+      <div class="help-row"><span class="label">Crown (4 spots)</span><span class="value gold">+7 troops</span></div>
+      <div class="help-tip"><b>Tip:</b> Crown gives +7 troops but only has 4 spots — everyone fights for it. Abyss gives +5 for just 6 spots — high value!</div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-h2">STAKED ARENAS</div>
+      <div class="help-row"><span class="label">Bronze</span><span class="value gold">0.005 ETH entry</span></div>
+      <div class="help-row"><span class="label">Silver</span><span class="value gold">0.02 ETH entry</span></div>
+      <div class="help-row"><span class="label">Gold</span><span class="value gold">0.05 ETH entry</span></div>
+      <div class="help-row"><span class="label">Diamond</span><span class="value gold">0.2 ETH entry</span></div>
+      <div class="help-row"><span class="label">Winner takes</span><span class="value green">90% of pot</span></div>
+      <div class="help-p" style="margin-top:8px">Deposit ETH on <b style="color:#00ff88">Base L2</b> via the wallet. No wallet connect needed — just send to your deposit address.</div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-h2">AI OPPONENTS</div>
+      <div class="help-row"><span class="label">Red Claw</span><span class="value red">Aggressive — hunts the leader</span></div>
+      <div class="help-row"><span class="label">Blue Tide</span><span class="value blue">Defensive — only attacks strong</span></div>
+      <div class="help-row"><span class="label">Gold Shell</span><span class="value gold">Expansionist — spreads wide</span></div>
+    </div>
+  </div>
+</div>
+
 <script>
 // Telegram Mini App initialization
 const tg = window.Telegram?.WebApp;
@@ -99,6 +192,10 @@ function openWallet() {
 function closeWallet() {
   document.getElementById('walletOverlay').classList.remove('show');
 }
+// Help overlay
+function openHelp() { document.getElementById('helpOverlay').classList.add('show'); }
+function closeHelp() { document.getElementById('helpOverlay').classList.remove('show'); }
+
 function switchTab(tab) {
   document.getElementById('tabDeposit').classList.toggle('active', tab === 'deposit');
   document.getElementById('tabWithdraw').classList.toggle('active', tab === 'withdraw');
