@@ -540,33 +540,26 @@ async function initGame() {
   game.fortifySource=null;game.hint='';
   game.winner=-1;
 
-  // Try to connect to server
+  // Start offline immediately so the game is playable
+  initOfflineGame();
+
+  // Then try to connect to server in background (non-blocking)
   if (!net.connecting) {
     net.connecting = true;
-    spawnFloat(W / 2, H * 0.5, 'Connecting...', '#888');
-
-    const authed = await net.auth();
-    if (authed) {
-      fetchEthBalance();
-      const joined = await net.joinGame('free');
-      if (joined) {
-        net.connectWS();
-        // Wait briefly for WS state
-        await new Promise(r => setTimeout(r, 500));
-        if (net.online) {
-          // Server will send initial state via WS
-          game.phase = 'deploy';
-          net.connecting = false;
-          spawnFloat(W / 2, H * 0.5, 'Connected!', '#00ff88');
-          return;
+    try {
+      const authed = await net.auth();
+      if (authed) {
+        fetchEthBalance();
+        const joined = await net.joinGame('free');
+        if (joined) {
+          net.connectWS();
         }
       }
+    } catch(e) {
+      console.log('Server connection failed, playing offline');
     }
     net.connecting = false;
   }
-
-  // Offline fallback
-  initOfflineGame();
 }
 
 function initOfflineGame() {
