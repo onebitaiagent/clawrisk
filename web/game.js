@@ -401,6 +401,18 @@ function handleServerMessage(msg) {
       break;
     }
 
+    case 'claim': {
+      // Server confirmed territory claim with specific troop count
+      if (msg.from) { cells[msg.fromIdx].owner = msg.from.owner; cells[msg.fromIdx].troops = msg.from.troops; }
+      if (msg.to) { cells[msg.toIdx].owner = msg.to.owner; cells[msg.toIdx].troops = msg.to.troops; }
+      if (msg.slot !== net.playerSlot) {
+        const dp = cellCenter(cells[msg.toIdx]);
+        spawnParticles(dp.x, dp.y, PLAYER_COLORS[msg.slot], 8);
+        spawnFloat(dp.x, dp.y - 20, 'Claimed!', PLAYER_COLORS[msg.slot]);
+      }
+      break;
+    }
+
     case 'bought': {
       game.shells[net.playerSlot] = msg.shells;
       game.reinforcements[net.playerSlot] = msg.reinforcements;
@@ -1011,12 +1023,12 @@ function doDeploy(cell, count, slot) {
 function doClaimCell(fromCell, toCell, count, slot) {
   const moveTroops = Math.min(count, fromCell.troops - 1);
   if (moveTroops <= 0) return;
+  // Always apply locally (server will reconcile if online)
+  fromCell.troops -= moveTroops;
+  toCell.owner = slot;
+  toCell.troops = moveTroops;
   if (net.online) {
-    net.send({type:'attack', fromIdx: fromCell.row*10+fromCell.col, toIdx: toCell.row*10+toCell.col});
-  } else {
-    fromCell.troops -= moveTroops;
-    toCell.owner = slot;
-    toCell.troops = moveTroops;
+    net.send({type:'claim', fromIdx: fromCell.row*10+fromCell.col, toIdx: toCell.row*10+toCell.col, count: moveTroops});
   }
   const pos = cellCenter(toCell);
   audio.play('claim_territory');

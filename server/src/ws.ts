@@ -192,6 +192,29 @@ function handleMessage(ws: ClientSocket, msg: any) {
       ws.send(JSON.stringify({ type: 'bought', shells: player.shells, reinforcements: player.reinforcements }));
       break;
     }
+
+    case 'claim': {
+      // Move specific number of troops to an empty cell
+      const game = activeGames.get(ws.gameId || '');
+      if (!game || ws.playerSlot === undefined) return;
+      const from = game.cells[msg.fromIdx];
+      const to = game.cells[msg.toIdx];
+      if (!from || !to) return;
+      if (from.owner !== ws.playerSlot) return;
+      if (to.owner !== -1 || to.troops > 0) return; // not empty
+      const count = Math.min(msg.count || 1, from.troops - 1);
+      if (count <= 0) return;
+      from.troops -= count;
+      to.owner = ws.playerSlot;
+      to.troops = count;
+      broadcastToGame(ws.gameId!, {
+        type: 'claim', slot: ws.playerSlot,
+        fromIdx: msg.fromIdx, toIdx: msg.toIdx, count,
+        from: { owner: from.owner, troops: from.troops },
+        to: { owner: to.owner, troops: to.troops },
+      });
+      break;
+    }
   }
 }
 
