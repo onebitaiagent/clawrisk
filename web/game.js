@@ -974,10 +974,14 @@ function handleHUDTap(sx,sy){
   const buyX=W/2-btnW-gap/2;
   if(x>=buyX&&x<=buyX+btnW&&y<=btnY+btnH){
     if(game.shells[s]>=10){
-      if(net.online) net.send({type:'buy'});
-      game.shells[s]-=10;game.reinforcements[s]++;
-      if(game.phase==='play')game.phase='deploy';audio.play('shell_earn');
-      spawnFloat(x,btnY-10,'+1 troop','#00ff88');
+      const maxBuy=Math.floor(game.shells[s]/10);
+      const count=maxBuy; // buy all affordable
+      for(let i=0;i<count;i++){
+        if(net.online) net.send({type:'buy'});
+        game.shells[s]-=10;game.reinforcements[s]++;
+      }
+      if(game.phase==='play')game.phase='deploy';audio.play('shell_earn');haptic('medium');
+      spawnFloat(x,btnY-10,'+'+count+' troops','#00ff88');
     } else spawnFloat(x,btnY-10,'Need 10 shells!','#ff6666');
     return true;
   }
@@ -1869,10 +1873,11 @@ function drawHUD() {
   ctx.fillStyle = canBuy ? '#00ff88' : '#444';
   ctx.font = `bold ${Math.max(11 * dpr, 13)}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('BUY TROOP', buyX + btnW / 2, btnY + btnH * 0.42);
+  const maxBuyCount = Math.floor(game.shells[me] / 10);
+  ctx.fillText(canBuy ? 'BUY ALL ('+maxBuyCount+')' : 'BUY TROOPS', buyX + btnW / 2, btnY + btnH * 0.42);
   ctx.font = `${Math.max(8 * dpr, 9)}px monospace`;
   ctx.fillStyle = canBuy ? '#66aa66' : '#333';
-  ctx.fillText('\u2728 10', buyX + btnW / 2, btnY + btnH * 0.75);
+  ctx.fillText(canBuy ? maxBuyCount+'0 shells' : 'need 10+', buyX + btnW / 2, btnY + btnH * 0.75);
 
   // Fortify
   const fX = W / 2 + gap / 2;
