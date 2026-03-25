@@ -780,10 +780,10 @@ function aiTurn(p){
       ba.troops-=mv;bd.owner=p;bd.troops=mv;
       const dp=cellCenter(bd);
       spawnParticles(dp.x,dp.y,PLAYER_COLORS[p],6);
-      game.attackCooldown[p]=2+Math.random()*2;
+      game.attackCooldown[p]=4+Math.random()*3;
     } else {
       startAICombat(ba,bd);
-      game.attackCooldown[p]= style==='aggressive' ? 2+Math.random()*2 : 3+Math.random()*3;
+      game.attackCooldown[p]= style==='aggressive' ? 4+Math.random()*3 : 5+Math.random()*4;
     }
   }
 
@@ -838,10 +838,16 @@ function handleTap(sx,sy){
         if (px >= sr.x && px <= sr.x + sr.w && py >= sr.y && py <= sr.y + sr.h) {
           game.selectedSpecies = sr.species;
           game.playerSpecies[0] = sr.species;
-          // Update player color to match species
           PLAYER_COLORS[0] = SPECIES[sr.species].color;
+          // Reassign AI species to avoid player's pick
+          const available = SPECIES_LIST.filter(s => s !== sr.species);
+          for (let ai = 1; ai < 4; ai++) {
+            game.playerSpecies[ai] = available[(ai - 1) % available.length];
+            PLAYER_COLORS[ai] = SPECIES[game.playerSpecies[ai]].color;
+            PLAYER_NAMES[ai] = SPECIES[game.playerSpecies[ai]].name;
+          }
           haptic('light');
-          return; // don't start game, just select
+          return;
         }
       }
     }
@@ -2952,7 +2958,12 @@ function update(dt) {
     game.shellTimer -= dt;
     if (game.shellTimer <= 0) { game.shellTimer = 10; doShellIncome(); }
   }
-  if (game.phase === 'play') for (let p = 1; p < 4; p++) aiTurn(p);
+  // Round-robin: only ONE AI acts per frame
+  if (game.phase === 'play') {
+    if (!game._aiTurnIdx) game._aiTurnIdx = 1;
+    aiTurn(game._aiTurnIdx);
+    game._aiTurnIdx = game._aiTurnIdx >= 3 ? 1 : game._aiTurnIdx + 1;
+  }
   if (game.phase === 'deploy' && game.reinforcements[me] <= 0) game.phase = 'play';
   for (let p = 0; p < 4; p++) {
     if (countTerritories(p) >= 60) { game.winner = p; game.phase = 'gameover'; audio.play('victory'); return; }
