@@ -3010,7 +3010,7 @@ function loadGameState() {
     if (!raw) return false;
     const state = JSON.parse(raw);
     // Only restore if saved less than 30 min ago
-    if (Date.now() - state.savedAt > 30 * 60 * 1000) {
+    if (Date.now() - state.savedAt > 24 * 60 * 60 * 1000) { // 24 hours
       localStorage.removeItem('clawrisk_gamestate');
       return false;
     }
