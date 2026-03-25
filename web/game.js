@@ -440,6 +440,8 @@ const game = {
   selectedSpecies: 'crab',
   // Audio
   muted: false,
+  // Troop picker
+  troopPicker: null, // { x, y, buttons:[], callback }
 };
 
 // === EFFECTS ===
@@ -891,29 +893,38 @@ function handleTap(sx,sy){
   if(!cell)return;
   const pos=cellCenter(cell);
   // DEPLOY
-  // DEPLOY — works in both deploy and play phase (reinforcements are optional)
+  // TROOP PICKER — handle tap on picker buttons
+  if (game.troopPicker) {
+    const tp = game.troopPicker;
+    for (const btn of tp.buttons) {
+      if (px >= btn.x && px <= btn.x + btn.w && py >= btn.y && py <= btn.y + btn.h) {
+        tp.callback(btn.count);
+        game.troopPicker = null;
+        return;
+      }
+    }
+    // Tapped outside picker — cancel
+    game.troopPicker = null;
+    return;
+  }
+
+  // DEPLOY — works in both deploy and play phase
   const s0=mySlot();
   if(game.reinforcements[s0]>0 && cell.owner===s0){
-    const deployCount = Math.min(game.reinforcements[s0], 3); // deploy up to 3 per tap
-    for(let i=0;i<deployCount;i++){
-      if(net.online) net.send({type:'deploy',cellIdx:cell.row*10+cell.col});
-      cell.troops++;game.reinforcements[s0]--;
-    }
-    audio.play('troop_deploy');haptic('light');
-    spawnRipple(pos.x,pos.y,PLAYER_COLORS[s0]);
-    spawnFloat(pos.x,pos.y-cellSize*.3,'+'+deployCount,'#00ff88');
-    spawnParticles(pos.x,pos.y,PLAYER_COLORS[s0],5);
-    if(game.reinforcements[s0]<=0 && game.phase==='deploy'){
-      game.phase='play';
-      if(game.tutorial===1) advanceTutorial();
+    const avail = game.reinforcements[s0];
+    if (avail <= 3) {
+      // Small amount — deploy all immediately
+      doDeploy(cell, avail, s0);
+    } else {
+      // Show picker: 1, half, all
+      showTroopPicker(pos.x, pos.y, avail, (count) => doDeploy(cell, count, s0));
     }
     return;
   }
-  // If in deploy phase but tapped non-owned cell, switch to play (save remaining troops)
+  // If in deploy phase but tapped non-owned cell, switch to play
   if(game.phase==='deploy'){
     game.phase='play';
     if(game.tutorial===1) advanceTutorial();
-    // Fall through to normal play handling below
   }
   // FORTIFY
   if(game.fortifySource){
@@ -945,22 +956,18 @@ function handleTap(sx,sy){
   if(cell.owner!==s&&isAdjacent(game.selectedCell,cell)){
     if(game.selectedCell.troops<2){spawnFloat(pos.x,pos.y-10,'Need 2+ troops','#ff6666');return;}
     if(game.attackCooldown[s]>0){spawnFloat(pos.x,pos.y-10,'Wait '+Math.ceil(game.attackCooldown[s])+'s','#ff6666');return;}
-    // Empty/unoccupied cell — just claim it, no combat
+    // Empty/unoccupied cell — move troops to claim (no combat)
     if(cell.troops<=0 && cell.owner===-1){
-      const moveTroops=Math.min(game.selectedCell.troops-1, 3);
-      if(net.online){
-        const fromIdx=game.selectedCell.row*10+game.selectedCell.col;
-        const toIdx=cell.row*10+cell.col;
-        net.send({type:'attack',fromIdx,toIdx});
+      const maxMove = game.selectedCell.troops - 1;
+      const selCell = game.selectedCell;
+      if (maxMove <= 3) {
+        // Small amount — move all immediately
+        doClaimCell(selCell, cell, maxMove, s);
       } else {
-        game.selectedCell.troops-=moveTroops;
-        cell.owner=s; cell.troops=moveTroops;
+        // Show picker
+        showTroopPicker(pos.x, pos.y, maxMove, (count) => doClaimCell(selCell, cell, count, s));
+        game.selectedCell = null;
       }
-      audio.play('claim_territory');
-      spawnParticles(pos.x,pos.y,PLAYER_COLORS[s],10);
-      spawnFloat(pos.x,pos.y-20,'Claimed!','#00ff88');haptic('medium');
-      game.attackCooldown[s]=0.5;game.selectedCell=null;
-      if(game.tutorial===3||game.tutorial===4) advanceTutorial();
       return;
     }
     // Real combat against occupied cell
@@ -979,6 +986,94 @@ function handleTap(sx,sy){
   if(cell.owner!==s)spawnFloat(pos.x,pos.y-10,'Not adjacent!','#ff6666');
   game.selectedCell=null;
 }
+function doDeploy(cell, count, slot) {
+  const c = Math.min(count, game.reinforcements[slot]);
+  for(let i=0;i<c;i++){
+    if(net.online) net.send({type:'deploy',cellIdx:cell.row*10+cell.col});
+    cell.troops++;game.reinforcements[slot]--;
+  }
+  audio.play('troop_deploy');haptic('light');
+  const pos=cellCenter(cell);
+  spawnRipple(pos.x,pos.y,PLAYER_COLORS[slot]);
+  spawnFloat(pos.x,pos.y-cellSize*.3,'+'+c,'#00ff88');
+  spawnParticles(pos.x,pos.y,PLAYER_COLORS[slot],5);
+  if(game.reinforcements[slot]<=0 && game.phase==='deploy'){
+    game.phase='play';
+    if(game.tutorial===1) advanceTutorial();
+  }
+}
+
+function doClaimCell(fromCell, toCell, count, slot) {
+  const moveTroops = Math.min(count, fromCell.troops - 1);
+  if (moveTroops <= 0) return;
+  if (net.online) {
+    net.send({type:'attack', fromIdx: fromCell.row*10+fromCell.col, toIdx: toCell.row*10+toCell.col});
+  } else {
+    fromCell.troops -= moveTroops;
+    toCell.owner = slot;
+    toCell.troops = moveTroops;
+  }
+  const pos = cellCenter(toCell);
+  audio.play('claim_territory');
+  spawnParticles(pos.x, pos.y, PLAYER_COLORS[slot], 10);
+  spawnFloat(pos.x, pos.y - 20, 'Territory claimed!', '#00ff88');
+  haptic('medium');
+  game.attackCooldown[slot] = 0.5;
+  game.selectedCell = null;
+  if (game.tutorial===3||game.tutorial===4) advanceTutorial();
+}
+
+function showTroopPicker(cx, cy, maxCount, callback) {
+  const dpr = devicePixelRatio;
+  const btnW = 50 * dpr, btnH = 32 * dpr, gap = 6 * dpr;
+  const half = Math.ceil(maxCount / 2);
+  const options = [{ label: '1', count: 1 }, { label: '\u00BD', count: half }, { label: 'ALL', count: maxCount }];
+  const totalW = options.length * (btnW + gap) - gap;
+  const startX = cx - totalW / 2;
+  const startY = cy - cellSize - btnH - 10 * dpr;
+
+  game.troopPicker = {
+    x: cx, y: cy,
+    buttons: options.map((opt, i) => ({
+      x: startX + i * (btnW + gap),
+      y: startY,
+      w: btnW, h: btnH,
+      label: opt.label + (opt.count > 1 ? ' ('+opt.count+')' : ''),
+      count: opt.count,
+    })),
+    callback,
+  };
+}
+
+function drawTroopPicker() {
+  if (!game.troopPicker) return;
+  const tp = game.troopPicker;
+  const dpr = devicePixelRatio;
+
+  // Dim background slightly
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  // Label
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.max(11*dpr,12)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('How many?', tp.x, tp.buttons[0].y - 8 * dpr);
+
+  for (const btn of tp.buttons) {
+    ctx.fillStyle = '#0d2d14';
+    roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 8); ctx.fill();
+    ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1.5;
+    roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 8); ctx.stroke();
+    ctx.fillStyle = '#00ff88';
+    ctx.font = `bold ${Math.max(10*dpr,11)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(btn.label, btn.x + btn.w/2, btn.y + btn.h * 0.65);
+  }
+}
+
 function handleHUDTap(sx,sy){
   const y=sy*devicePixelRatio,x=sx*devicePixelRatio,dpr=devicePixelRatio;
   const btnH=46*dpr,btnW=Math.min(140*dpr,W*.35),gap=12*dpr,btnY=H-btnH-14*dpr;
@@ -2876,6 +2971,7 @@ function gameLoop(ts) {
     drawTicker();
     drawHintBar();
     drawTutorial();
+    drawTroopPicker();
     if (game.phase === 'gameover') drawGameOver();
   }
   } catch(e) { console.error('RENDER ERROR:', e); }
