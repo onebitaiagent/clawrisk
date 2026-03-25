@@ -851,6 +851,13 @@ function handleTap(sx,sy){
     return;
   }
   if(game.phase==='gameover'){game.phase='title';return;}
+  // Skip tutorial button
+  if(game.tutorial>0&&game.tutorial<7&&game._skipTutorialRect){
+    const sr=game._skipTutorialRect;
+    if(px>=sr.x&&px<=sr.x+sr.w&&py>=sr.y&&py<=sr.y+sr.h){
+      game.tutorial=0;game.firstGame=false;return;
+    }
+  }
   // Info-only tutorial steps (4=shells, 5=regions, 6=win) — tap to continue
   if(game.tutorial>=4&&game.tutorial<7){advanceTutorial();return;}
   if(game.phase==='combat'){
@@ -2129,10 +2136,16 @@ function drawTutorial() {
   ctx.fillText(info.sub, W / 2, cardY + 72 * dpr);
 
   // Skip button
-  ctx.fillStyle = '#444';
-  ctx.font = `${Math.max(9 * dpr, 10)}px monospace`;
-  const skipText = (step >= 4) ? 'tap anywhere to continue' : 'tap anywhere outside to skip';
-  ctx.fillText(skipText, W / 2, cardY + cardH + 14 * dpr);
+  const skipW = 80 * dpr, skipH = 28 * dpr;
+  const skipX = (W - skipW) / 2, skipY = cardY + cardH + 8;
+  ctx.fillStyle = '#1a1212';
+  roundRect(ctx, skipX, skipY, skipW, skipH, 6); ctx.fill();
+  ctx.strokeStyle = '#ff444466'; ctx.lineWidth = 1;
+  roundRect(ctx, skipX, skipY, skipW, skipH, 6); ctx.stroke();
+  ctx.fillStyle = '#ff4444';
+  ctx.font = `bold ${Math.max(10 * dpr, 11)}px monospace`;
+  ctx.fillText('SKIP', W / 2, skipY + skipH * 0.65);
+  game._skipTutorialRect = { x: skipX, y: skipY, w: skipW, h: skipH };
 }
 
 function advanceTutorial() {
