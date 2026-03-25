@@ -1069,6 +1069,32 @@ function showTroopPicker(cx, cy, maxCount, callback) {
   };
 }
 
+function drawTurnHighlight() {
+  if (!game._highlightCell || game._highlightTimer <= 0) return;
+  const cell = cells[game._highlightCell];
+  if (!cell) return;
+  const x = gridOffsetX + cell.col * cellSize;
+  const y = gridOffsetY + cell.row * cellSize;
+  const alpha = Math.min(1, game._highlightTimer);
+  const color = cell.owner >= 0 ? PLAYER_COLORS[cell.owner] : '#fff';
+
+  // Pulsing glow ring
+  ctx.globalAlpha = alpha * 0.6;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 15;
+  ctx.strokeRect(x - 3, y - 3, cellSize + 6, cellSize + 6);
+  ctx.shadowBlur = 0;
+
+  // "!" marker
+  ctx.fillStyle = color;
+  ctx.font = `bold ${Math.max(14 * devicePixelRatio, 15)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('!', x + cellSize / 2, y - 6);
+  ctx.globalAlpha = 1;
+}
+
 function drawTroopPicker() {
   if (!game.troopPicker) return;
   const tp = game.troopPicker;
@@ -2111,13 +2137,22 @@ function drawHUD() {
 }
 
 function drawHintBar() {
-  if (game.tutorial > 0 && game.tutorial < 7) return; // tutorial handles hints
+  if (game.tutorial > 0 && game.tutorial < 7) return;
   const dpr = devicePixelRatio;
   let hint = '';
-  if (game.phase === 'deploy' && game.reinforcements[mySlot()] > 0)
+  let hintColor = '#ccc';
+
+  // Turn announcements override other hints
+  if (game.hint && game._turnAnnounce > 0) {
+    hint = game.hint;
+    const slot = game._turnSlot !== undefined ? game._turnSlot : 0;
+    hintColor = PLAYER_COLORS[slot] || '#fff';
+  } else if (game.phase === 'deploy' && game.reinforcements[mySlot()] > 0)
     hint = 'Tap your GREEN spots to place troops';
-  else if (game.phase === 'play' && !game.selectedCell && !game.fortifySource)
-    hint = 'Tap one of your spots to select it';
+  else if (game.phase === 'play' && game._turnSlot === 0 && !game.selectedCell && !game.fortifySource)
+    hint = '\u25B6 YOUR TURN \u2014 select a spot';
+  else if (game.phase === 'play' && game._turnSlot !== 0)
+    hint = (PLAYER_NAMES[game._turnSlot] || 'AI') + ' is thinking...';
   else if (game.phase === 'play' && game.selectedCell && game.selectedCell.troops >= 2)
     hint = 'Tap a RED target to attack, or select another spot';
   else if (game.phase === 'play' && game.selectedCell && game.selectedCell.troops < 2)
@@ -2128,17 +2163,25 @@ function drawHintBar() {
     hint = 'Combat in progress...';
 
   if (!hint) return;
-  const barH = 28 * dpr;
+  const barH = 32 * dpr;
   const barY = gridOffsetY + cellSize * 10 + 6;
-  ctx.fillStyle = 'rgba(6,6,20,0.85)';
+
+  // Turn announcement gets a colored bar
+  const isTurnAnnounce = game._turnAnnounce > 0;
+  ctx.fillStyle = isTurnAnnounce ? 'rgba(10,10,30,0.92)' : 'rgba(6,6,20,0.85)';
   roundRect(ctx, W * 0.04, barY, W * 0.92, barH, 8); ctx.fill();
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 1;
+  if (isTurnAnnounce) {
+    ctx.strokeStyle = hintColor + '66';
+    ctx.lineWidth = 2;
+  } else {
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+  }
   roundRect(ctx, W * 0.04, barY, W * 0.92, barH, 8); ctx.stroke();
-  ctx.fillStyle = '#ccc';
-  ctx.font = `bold ${Math.max(10 * dpr, 11)}px monospace`;
+  ctx.fillStyle = hintColor;
+  ctx.font = `bold ${Math.max(isTurnAnnounce ? 12 : 10 * dpr, isTurnAnnounce ? 14 : 11)}px monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText(hint, W / 2, barY + barH * 0.65);
+  ctx.fillText(hint, W / 2, barY + barH * 0.6);
 }
 
 // === TUTORIAL OVERLAY ===
@@ -2960,23 +3003,60 @@ function update(dt) {
     game.shellTimer -= dt;
     if (game.shellTimer <= 0) { game.shellTimer = 10; doShellIncome(); }
   }
-  // Round-robin turns: 0(you) → 1 → 2 → 3 → 0(you) → ...
-  // AI only acts after player has taken an action (attack or claim)
+  // Round-robin turns with announcements
   if (game.phase === 'play') {
-    if (!game._turnSlot) game._turnSlot = 0; // start with player
-    if (game._turnSlot === 0) {
-      // Player's turn — wait for them to act
-      // (player actions set game._playerActed = true)
-    } else {
-      // AI turn
-      aiTurn(game._turnSlot);
+    if (game._turnSlot === undefined) game._turnSlot = 0;
+
+    // Turn announcement pause
+    if (game._turnAnnounce > 0) {
+      game._turnAnnounce -= dt;
+      return; // pause during announcement
     }
-    // Advance turn after AI acts (or if player already acted)
+
+    if (game._turnSlot === 0) {
+      // Player's turn — show announcement once, then wait for action
+      if (!game._turnShown) {
+        game._turnShown = true;
+        game._turnAnnounce = 0.6;
+        game.hint = 'YOUR TURN';
+      }
+    } else {
+      // AI turn — announce, then act
+      if (!game._turnShown) {
+        game._turnShown = true;
+        game._turnAnnounce = 0.8; // pause to show whose turn
+        const name = PLAYER_NAMES[game._turnSlot] || 'AI';
+        game.hint = name + "'s turn";
+        return; // show announcement first, act next frame
+      }
+      // AI acts
+      const prevCells = cells.map(c => ({ owner: c.owner, troops: c.troops }));
+      aiTurn(game._turnSlot);
+      // Highlight what changed
+      for (let i = 0; i < 100; i++) {
+        if (cells[i].owner !== prevCells[i].owner && cells[i].owner === game._turnSlot) {
+          game._highlightCell = i;
+          game._highlightTimer = 1.2;
+        }
+      }
+    }
+
+    // Advance turn
     if (game._turnSlot > 0 || game._playerActed) {
       game._turnSlot = (game._turnSlot + 1) % 4;
       game._playerActed = false;
+      game._turnShown = false;
+      // Skip eliminated players
+      let safety = 0;
+      while (game._turnSlot > 0 && game.attackCooldown[game._turnSlot] === -1 && safety < 4) {
+        game._turnSlot = (game._turnSlot + 1) % 4;
+        safety++;
+      }
     }
   }
+
+  // Highlight timer
+  if (game._highlightTimer > 0) game._highlightTimer -= dt;
   if (game.phase === 'deploy' && game.reinforcements[me] <= 0) game.phase = 'play';
   for (let p = 0; p < 4; p++) {
     if (countTerritories(p) >= 60) { game.winner = p; game.phase = 'gameover'; audio.play('victory'); return; }
@@ -3025,6 +3105,7 @@ function gameLoop(ts) {
     drawHintBar();
     drawTutorial();
     drawTroopPicker();
+    drawTurnHighlight();
     if (game.phase === 'gameover') drawGameOver();
   }
   } catch(e) { console.error('RENDER ERROR:', e); }
